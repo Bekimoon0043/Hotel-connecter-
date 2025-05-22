@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -6,8 +7,8 @@ import { Menu, BedDouble } from 'lucide-react';
 export default function Header() {
   const navItems = [
     { label: 'Home', href: '/' },
-    { label: 'List your property', href: '/register-hotel' }, // Placeholder
-    { label: 'Sign In', href: '/signin' }, // Placeholder
+    { label: 'List your property', href: '/register-hotel' }, 
+    { label: 'Sign In', href: '/signin' }, 
   ];
 
   return (
@@ -25,8 +26,8 @@ export default function Header() {
               <Link href={item.href}>{item.label}</Link>
             </Button>
           ))}
-          <Button className="bg-accent text-accent-foreground hover:bg-accent/90">
-             Sign Up
+          <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
+            <Link href="/signup">Sign Up</Link>
           </Button>
         </nav>
 
@@ -46,8 +47,8 @@ export default function Header() {
                     {item.label}
                   </Link>
                 ))}
-                 <Button className="bg-accent text-accent-foreground hover:bg-accent/90 w-full mt-4">
-                   Sign Up
+                 <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90 w-full mt-4">
+                   <Link href="/signup">Sign Up</Link>
                  </Button>
               </nav>
             </SheetContent>

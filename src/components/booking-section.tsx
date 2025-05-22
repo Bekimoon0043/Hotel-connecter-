@@ -9,14 +9,20 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import type { Hotel, RoomType } from '@/lib/types';
+import type { Hotel, RoomType, Booking } from '@/lib/types';
 import { format, differenceInDays, addDays } from 'date-fns';
-import { CalendarDays, Users, BedDouble, DollarSign, ShoppingCart } from 'lucide-react';
+import { CalendarDays, Users, BedDouble, DollarSign, ShoppingCart, ShieldAlert } from 'lucide-react';
 import type { DateRange } from "react-day-picker";
 import { useToast } from "@/hooks/use-toast";
 
 interface BookingSectionProps {
   hotel: Hotel;
+}
+
+interface CurrentUser {
+  email: string;
+  fullName: string;
+  role: 'owner' | 'booker';
 }
 
 export default function BookingSection({ hotel }: BookingSectionProps) {
@@ -26,13 +32,22 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
   const [selectedRoom, setSelectedRoom] = useState<RoomType | undefined>(hotel.roomTypes[0]);
   const [totalPrice, setTotalPrice] = useState(0);
   const [isClient, setIsClient] = useState(false);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
   useEffect(() => {
     setIsClient(true);
-    // Initialize dateRange here to ensure new Date() is called client-side
     const today = new Date();
     const tomorrow = addDays(today, 1);
     setDateRange({ from: today, to: tomorrow });
+
+    const userStr = localStorage.getItem('currentUser');
+    if (userStr) {
+      try {
+        setCurrentUser(JSON.parse(userStr));
+      } catch (e) {
+        console.error("Error parsing currentUser for booking:", e);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -41,17 +56,26 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
       if (nights > 0) {
         setTotalPrice(nights * selectedRoom.price * guests);
       } else {
-        // If dates are the same or checkout is before checkin, but a room is selected
         setTotalPrice(selectedRoom.price * guests); 
       }
     } else if (selectedRoom) {
-      setTotalPrice(selectedRoom.price * guests); // Price for 1 night if no range
+      setTotalPrice(selectedRoom.price * guests); 
     } else {
       setTotalPrice(0);
     }
   }, [dateRange, guests, selectedRoom]);
 
   const handleBooking = () => {
+    if (!currentUser) {
+      toast({
+        title: "Login Required",
+        description: "Please sign in to book a hotel.",
+        variant: "destructive",
+      });
+      // Optionally, redirect to sign-in page: router.push('/signin?redirect=/hotel/' + hotel.id);
+      return;
+    }
+
     if (!dateRange?.from || !dateRange?.to || !selectedRoom) {
       toast({
         title: "Incomplete Information",
@@ -60,7 +84,8 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
       });
       return;
     }
-    if (differenceInDays(dateRange.to, dateRange.from) <= 0) {
+    const nights = differenceInDays(dateRange.to, dateRange.from);
+    if (nights <= 0) {
       toast({
         title: "Invalid Date Range",
         description: "Check-out date must be after check-in date.",
@@ -68,19 +93,44 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
       });
       return;
     }
-    // Mock booking action
-    console.log({
+
+    const newBooking: Booking = {
+      id: `booking-${Date.now()}`,
       hotelId: hotel.id,
+      hotelName: hotel.name,
+      hotelOwnerEmail: hotel.ownerEmail || "unknown@example.com", // Fallback if ownerEmail is somehow missing
       roomId: selectedRoom.id,
-      checkIn: dateRange.from,
-      checkOut: dateRange.to,
-      guests,
-      totalPrice,
-    });
-    toast({
-      title: "Booking Requested!",
-      description: `Your request for ${selectedRoom.name} at ${hotel.name} has been submitted.`,
-    });
+      roomName: selectedRoom.name,
+      checkIn: dateRange.from.toISOString(),
+      checkOut: dateRange.to.toISOString(),
+      guests: guests,
+      totalPrice: totalPrice,
+      bookedByGuestName: currentUser.fullName,
+      bookedByGuestEmail: currentUser.email,
+      bookingDate: new Date().toISOString(),
+      status: 'pending',
+    };
+
+    try {
+      const existingBookingsString = localStorage.getItem('hotelBookings');
+      const existingBookings: Booking[] = existingBookingsString ? JSON.parse(existingBookingsString) : [];
+      existingBookings.push(newBooking);
+      localStorage.setItem('hotelBookings', JSON.stringify(existingBookings));
+
+      toast({
+        title: "Booking Requested!",
+        description: `Your request for ${selectedRoom.name} at ${hotel.name} has been submitted. The hotel owner will be notified.`,
+      });
+      console.log("New Booking Stored (Local):", newBooking);
+
+    } catch (error) {
+      console.error("Error saving booking to localStorage:", error);
+      toast({
+        title: "Booking Error",
+        description: "Could not save your booking locally. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
   
   if (!isClient) {
@@ -100,7 +150,6 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
       </Card>
     );
   }
-
 
   return (
     <Card className="shadow-xl sticky top-24">
@@ -157,8 +206,13 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
               id="guests-details"
               type="number"
               min="1"
+              max={selectedRoom?.maxGuests || 99} // Cap guests by room maxGuests
               value={guests}
-              onChange={(e) => setGuests(Math.max(1, parseInt(e.target.value, 10) || 1))}
+              onChange={(e) => {
+                const numGuests = parseInt(e.target.value, 10) || 1;
+                const max = selectedRoom?.maxGuests || 99;
+                setGuests(Math.min(Math.max(1, numGuests), max));
+              }}
               className="pl-10 h-11"
             />
           </div>
@@ -169,7 +223,12 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
           <Select
             value={selectedRoom?.id}
             onValueChange={(roomId) => {
-              setSelectedRoom(hotel.roomTypes.find(r => r.id === roomId));
+              const room = hotel.roomTypes.find(r => r.id === roomId);
+              setSelectedRoom(room);
+              // Reset guests if current guests exceed new room's max capacity
+              if (room && guests > room.maxGuests) {
+                setGuests(room.maxGuests);
+              }
             }}
           >
             <SelectTrigger id="room-type-details" className="mt-1 h-11">
@@ -179,7 +238,7 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
             <SelectContent>
               {hotel.roomTypes.map(room => (
                 <SelectItem key={room.id} value={room.id}>
-                  {room.name} (${room.price}/night)
+                  {room.name} (${room.price}/night, Max: {room.maxGuests} guests)
                 </SelectItem>
               ))}
             </SelectContent>
@@ -193,14 +252,19 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
             <p className="text-3xl font-bold text-primary">${totalPrice.toFixed(2)}</p>
           </div>
         )}
+        {!currentUser && (
+          <div className="text-sm text-destructive flex items-center gap-2 p-2 border border-destructive/50 rounded-md">
+             <ShieldAlert size={18} /> Please sign in to complete your booking.
+          </div>
+        )}
         <Button 
           onClick={handleBooking} 
           size="lg" 
           className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg py-6"
-          disabled={!dateRange?.from || !dateRange?.to || !selectedRoom || (differenceInDays(dateRange.to, dateRange.from) <=0)}
+          disabled={!dateRange?.from || !dateRange?.to || !selectedRoom || (differenceInDays(dateRange.to, dateRange.from) <=0) || !currentUser}
         >
           <ShoppingCart className="mr-2 h-5 w-5"/>
-          Book Now
+          {currentUser ? 'Book Now' : 'Sign In to Book'}
         </Button>
       </CardFooter>
     </Card>

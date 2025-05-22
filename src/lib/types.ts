@@ -12,6 +12,7 @@ export interface RoomType {
 export interface Hotel {
   id: string;
   name: string;
+  ownerEmail?: string; // Added for linking hotel to owner
   location: {
     city: string;
     country: string;
@@ -27,11 +28,30 @@ export interface Hotel {
   roomTypes: RoomType[];
 }
 
+export interface Booking {
+  id: string; // Unique booking ID
+  hotelId: string;
+  hotelName: string;
+  hotelOwnerEmail: string;
+  roomId: string;
+  roomName: string;
+  checkIn: string; // ISO date string
+  checkOut: string; // ISO date string
+  guests: number;
+  totalPrice: number;
+  bookedByGuestName: string;
+  bookedByGuestEmail: string;
+  bookingDate: string; // ISO date string
+  status: 'pending' | 'confirmed' | 'cancelled'; // Booking status
+}
+
+
 // Mock Data
 const mockHotels: Hotel[] = [
   {
     id: "grand-hyatt-tokyo",
     name: "Grand Hyatt Tokyo",
+    ownerEmail: "owner1@example.com",
     location: { city: "Tokyo", country: "Japan", address: "6-10-3 Roppongi, Minato-Ku" },
     images: [
       "https://placehold.co/800x600.png", 
@@ -50,6 +70,7 @@ const mockHotels: Hotel[] = [
   {
     id: "the-plaza-new-york",
     name: "The Plaza New York",
+    ownerEmail: "owner2@example.com",
     location: { city: "New York", country: "USA", address: "Fifth Avenue at Central Park South" },
     images: [
       "https://placehold.co/800x500.png", 
@@ -67,6 +88,7 @@ const mockHotels: Hotel[] = [
   {
     id: "desert-mirage-resort",
     name: "Desert Mirage Resort",
+    ownerEmail: "owner1@example.com",
     location: { city: "Dubai", country: "UAE", address: "1 Sheikh Mohammed bin Rashid Blvd" },
     images: [
       "https://placehold.co/800x550.png", 
@@ -86,6 +108,7 @@ const mockHotels: Hotel[] = [
   {
     id: "lakeview-mountain-lodge",
     name: "Lakeview Mountain Lodge",
+    ownerEmail: "owner3@example.com",
     location: { city: "Banff", country: "Canada", address: "123 Mountain View Road" },
     images: ["https://placehold.co/700x500.png"],
     rating: 4.5,
@@ -100,6 +123,7 @@ const mockHotels: Hotel[] = [
   {
     id: "coastal-charm-inn",
     name: "Coastal Charm Inn",
+    ownerEmail: "owner2@example.com",
     location: { city: "Santorini", country: "Greece", address: "Oia Main Street" },
     images: [
       "https://placehold.co/800x600.png",
@@ -117,6 +141,7 @@ const mockHotels: Hotel[] = [
   {
     id: "urban-oasis-hotel",
     name: "Urban Oasis Hotel",
+    ownerEmail: "owner3@example.com",
     location: { city: "Singapore", country: "Singapore", address: "10 Bayfront Avenue" },
     images: [
       "https://placehold.co/750x550.png",

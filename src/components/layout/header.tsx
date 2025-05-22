@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
-import { Menu, BedDouble, LogOut, UserCircle } from 'lucide-react';
+import { Menu, BedDouble, LogOut, UserCircle, LayoutDashboard } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
 
@@ -26,19 +26,19 @@ export default function Header() {
 
 
   useEffect(() => {
-    setIsClient(true); // Component has mounted
+    setIsClient(true); 
     const userStr = localStorage.getItem('currentUser');
     if (userStr) {
       try {
         setCurrentUser(JSON.parse(userStr));
       } catch (e) {
         console.error("Error parsing currentUser from localStorage", e);
-        localStorage.removeItem('currentUser'); // Clear corrupted data
+        localStorage.removeItem('currentUser'); 
       }
     } else {
       setCurrentUser(null);
     }
-  }, [pathname]); // Re-check on pathname change, e.g., after login/logout navigation
+  }, [pathname]); 
 
   const handleSignOut = () => {
     localStorage.removeItem('currentUser');
@@ -48,17 +48,31 @@ export default function Header() {
       description: "You have been successfully signed out.",
     });
     router.push('/');
-    setIsSheetOpen(false); // Close mobile menu if open
+    setIsSheetOpen(false); 
   };
 
-  const navItems = [
+  const baseNavItems = [
     { label: 'Home', href: '/' },
     { label: 'Explore Hotels', href: '/explore' },
-    { label: 'List your property', href: '/register-hotel' },
   ];
 
+  const ownerNavItem = { label: 'List your property', href: '/register-hotel' };
+  const ownerDashboardItem = { label: 'My Dashboard', href: '/dashboard/owner', icon: <LayoutDashboard size={18} className="mr-1.5"/> };
+
+
+  const getNavItems = () => {
+    let items = [...baseNavItems];
+    if (currentUser?.role === 'owner') {
+      items.push(ownerDashboardItem);
+    }
+    items.push(ownerNavItem); // Always show "List your property" - page itself handles auth
+    return items;
+  };
+  
+  const navItems = getNavItems();
+
+
   if (!isClient) {
-    // Render a loading state or a basic version of the header for SSR
     return (
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 max-w-7xl items-center justify-between">
@@ -88,9 +102,9 @@ export default function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-1">
-          {navItems.map((item) => (
+          {navItems.filter(item => !(item.label === 'My Dashboard' && currentUser?.role !== 'owner')).map((item) => (
             <Button key={item.label} variant="ghost" asChild>
-              <Link href={item.href}>{item.label}</Link>
+              <Link href={item.href}>{item.icon}{item.label}</Link>
             </Button>
           ))}
           {currentUser ? (
@@ -121,51 +135,49 @@ export default function Header() {
                 <span className="sr-only">Toggle Menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] sm:w-[320px] p-6">
-              <div className="flex flex-col h-full">
-                <nav className="flex flex-col gap-3 mt-8 flex-grow">
-                  {currentUser && (
-                    <div className="px-2 py-3 border-b mb-3">
-                        <div className="flex items-center gap-2">
-                            <UserCircle size={28} className="text-primary"/>
-                            <div>
-                                <p className="font-semibold">{currentUser.fullName}</p>
-                                <p className="text-xs text-muted-foreground">{currentUser.email}</p>
-                            </div>
-                        </div>
-                    </div>
-                  )}
-                  {navItems.map((item) => (
-                    <SheetClose asChild key={item.label}>
-                      <Link
-                        href={item.href}
-                        className="block px-2 py-2 text-lg hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
-                      >
-                        {item.label}
-                      </Link>
+            <SheetContent side="right" className="w-[300px] sm:w-[320px] p-6 flex flex-col">
+              <nav className="flex flex-col gap-3 mt-8 flex-grow">
+                {currentUser && (
+                  <div className="px-2 py-3 border-b mb-3">
+                      <div className="flex items-center gap-2">
+                          <UserCircle size={28} className="text-primary"/>
+                          <div>
+                              <p className="font-semibold">{currentUser.fullName}</p>
+                              <p className="text-xs text-muted-foreground">{currentUser.email} ({currentUser.role})</p>
+                          </div>
+                      </div>
+                  </div>
+                )}
+                {navItems.filter(item => !(item.label === 'My Dashboard' && currentUser?.role !== 'owner')).map((item) => (
+                  <SheetClose asChild key={item.label}>
+                    <Link
+                      href={item.href}
+                      className="flex items-center px-2 py-2 text-lg hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
+                    >
+                      {item.icon}{item.label}
+                    </Link>
+                  </SheetClose>
+                ))}
+              </nav>
+              <div className="mt-auto pt-4 border-t">
+                {currentUser ? (
+                   <Button onClick={handleSignOut} className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                     <LogOut size={18} className="mr-2" /> Sign Out
+                   </Button>
+                ) : (
+                  <div className="space-y-3">
+                    <SheetClose asChild>
+                      <Button asChild variant="outline" className="w-full">
+                        <Link href="/signin">Sign In</Link>
+                      </Button>
                     </SheetClose>
-                  ))}
-                </nav>
-                <div className="mt-auto pt-4 border-t">
-                  {currentUser ? (
-                     <Button onClick={handleSignOut} className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                       <LogOut size={18} className="mr-2" /> Sign Out
-                     </Button>
-                  ) : (
-                    <div className="space-y-3">
-                      <SheetClose asChild>
-                        <Button asChild variant="outline" className="w-full">
-                          <Link href="/signin">Sign In</Link>
-                        </Button>
-                      </SheetClose>
-                      <SheetClose asChild>
-                        <Button asChild className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
-                          <Link href="/signup">Sign Up</Link>
-                        </Button>
-                      </SheetClose>
-                    </div>
-                  )}
-                </div>
+                    <SheetClose asChild>
+                      <Button asChild className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+                        <Link href="/signup">Sign Up</Link>
+                      </Button>
+                    </SheetClose>
+                  </div>
+                )}
               </div>
             </SheetContent>
           </Sheet>

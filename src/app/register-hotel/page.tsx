@@ -29,7 +29,7 @@ export default function RegisterHotelPage() {
   const [country, setCountry] = useState('');
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
-  const [contactEmail, setContactEmail] = useState('');
+  const [contactEmail, setContactEmail] = useState(''); // This can be different from owner's email
   const [website, setWebsite] = useState('');
   const [pricePerNight, setPricePerNight] = useState('');
   const [hotelImageFile, setHotelImageFile] = useState<File | null>(null);
@@ -47,7 +47,7 @@ export default function RegisterHotelPage() {
             description: "You must be a hotel owner to list a property.",
             variant: "destructive",
           });
-          router.push('/explore'); // Redirect non-owners
+          router.push('/explore'); 
         }
       } catch (e) {
         console.error("Error parsing currentUser", e);
@@ -55,7 +55,6 @@ export default function RegisterHotelPage() {
         router.push('/signin?role=owner&redirect=/register-hotel');
       }
     } else {
-      // Not logged in
       router.push('/signin?role=owner&redirect=/register-hotel');
     }
     setIsLoadingAuth(false);
@@ -125,6 +124,7 @@ export default function RegisterHotelPage() {
     const newHotel: Hotel = {
       id: newHotelId,
       name: hotelName,
+      ownerEmail: currentUser.email, // Store owner's email
       location: {
         city: city,
         country: country,
@@ -214,7 +214,6 @@ export default function RegisterHotelPage() {
   }
 
   if (!currentUser || currentUser.role !== 'owner') {
-    // This state should ideally not be reached due to redirect, but as a fallback:
     return (
         <div className="flex flex-col items-center justify-center min-h-screen py-12 bg-muted/20">
             <Card className="shadow-xl p-8 text-center">
@@ -333,7 +332,6 @@ export default function RegisterHotelPage() {
                 />
                 {imagePreviewUrl && (
                   <div className="mt-4">
-                    {/* Using img tag for Data URL preview */}
                     <img src={imagePreviewUrl} alt="Hotel preview" className="max-h-48 rounded-md shadow-md" />
                   </div>
                 )}
@@ -355,7 +353,7 @@ export default function RegisterHotelPage() {
               
               <div>
                 <Label htmlFor="contactEmail" className="text-base font-semibold flex items-center">
-                  <Mail size={18} className="mr-2 text-primary" /> Contact Email (Optional)
+                  <Mail size={18} className="mr-2 text-primary" /> Contact Email (Optional for Public Display)
                 </Label>
                 <Input
                   id="contactEmail"

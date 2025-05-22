@@ -116,7 +116,6 @@ export default function AdminDashboardPage() {
         localStorage.setItem('registeredUsers', JSON.stringify(updatedUsers));
         setUsers(updatedUsers);
         
-        // Optional: Delete bookings made by this user
         const bookingsOfUser = bookings.filter(b => b.bookedByGuestEmail.toLowerCase() === id.toLowerCase());
         const remainingBookings = bookings.filter(b => b.bookedByGuestEmail.toLowerCase() !== id.toLowerCase());
         if (bookingsOfUser.length > 0) {
@@ -176,148 +175,148 @@ export default function AdminDashboardPage() {
   ];
 
   return (
-    <div className="py-8 md:py-12 bg-background">
-      <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <header className="mb-10 text-center">
-          <h1 className="text-4xl font-extrabold tracking-tight text-primary mb-2">Admin Dashboard</h1>
-          <p className="text-xl text-muted-foreground">Manage all aspects of Hotel Connector.</p>
-        </header>
+    <AlertDialog open={!!itemToDelete} onOpenChange={(isOpen) => !isOpen && setItemToDelete(null)}>
+      <div className="py-8 md:py-12 bg-background">
+        <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <header className="mb-10 text-center">
+            <h1 className="text-4xl font-extrabold tracking-tight text-primary mb-2">Admin Dashboard</h1>
+            <p className="text-xl text-muted-foreground">Manage all aspects of Hotel Connector.</p>
+          </header>
 
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            {stats.map(stat => (
-                <Card key={stat.title} className="shadow-lg">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                        {stat.icon}
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold">{stat.value}</div>
-                    </CardContent>
-                </Card>
-            ))}
-        </section>
+          <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+              {stats.map(stat => (
+                  <Card key={stat.title} className="shadow-lg">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                          {stat.icon}
+                      </CardHeader>
+                      <CardContent>
+                          <div className="text-3xl font-bold">{stat.value}</div>
+                      </CardContent>
+                  </Card>
+              ))}
+          </section>
 
-        {isLoadingData ? (
-          <div className="text-center py-10">Loading data...</div>
-        ) : (
-          <div className="space-y-12">
-            <Card className="shadow-xl">
-              <CardHeader>
-                <CardTitle className="text-2xl">Manage Hotels</CardTitle>
-                <CardDescription>View and remove registered hotel properties.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {hotels.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Location</TableHead>
-                        <TableHead>Owner Email</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {hotels.map(hotel => (
-                        <TableRow key={hotel.id}>
-                          <TableCell className="font-medium">{hotel.name}</TableCell>
-                          <TableCell>{hotel.location.city}, {hotel.location.country}</TableCell>
-                          <TableCell>{hotel.ownerEmail || 'N/A'}</TableCell>
-                          <TableCell className="text-right">
-                            <AlertDialogTrigger asChild>
-                              <Button variant="destructive" size="sm" onClick={() => setItemToDelete({ id: hotel.id, type: 'hotel' })}>
-                                <Trash2 className="h-4 w-4 mr-1" /> Delete
-                              </Button>
-                            </AlertDialogTrigger>
-                          </TableCell>
+          {isLoadingData ? (
+            <div className="text-center py-10">Loading data...</div>
+          ) : (
+            <div className="space-y-12">
+              <Card className="shadow-xl">
+                <CardHeader>
+                  <CardTitle className="text-2xl">Manage Hotels</CardTitle>
+                  <CardDescription>View and remove registered hotel properties.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {hotels.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Location</TableHead>
+                          <TableHead>Owner Email</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : <p className="text-muted-foreground">No hotels registered yet.</p>}
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-xl">
-              <CardHeader>
-                <CardTitle className="text-2xl">Manage Users</CardTitle>
-                <CardDescription>View and remove registered user accounts.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {users.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Full Name</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {users.map(user => (
-                        <TableRow key={user.id}>
-                          <TableCell className="font-medium">{user.fullName}</TableCell>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell className="text-right">
-                             {user.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase() && (
-                                <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="sm" onClick={() => setItemToDelete({ id: user.email, type: 'user' })}>
-                                    <Trash2 className="h-4 w-4 mr-1" /> Delete
+                      </TableHeader>
+                      <TableBody>
+                        {hotels.map(hotel => (
+                          <TableRow key={hotel.id}>
+                            <TableCell className="font-medium">{hotel.name}</TableCell>
+                            <TableCell>{hotel.location.city}, {hotel.location.country}</TableCell>
+                            <TableCell>{hotel.ownerEmail || 'N/A'}</TableCell>
+                            <TableCell className="text-right">
+                              <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="sm" onClick={() => setItemToDelete({ id: hotel.id, type: 'hotel' })}>
+                                  <Trash2 className="h-4 w-4 mr-1" /> Delete
                                 </Button>
-                                </AlertDialogTrigger>
-                             )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : <p className="text-muted-foreground">No users registered yet.</p>}
-              </CardContent>
-            </Card>
+                              </AlertDialogTrigger>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : <p className="text-muted-foreground">No hotels registered yet.</p>}
+                </CardContent>
+              </Card>
 
-            <Card className="shadow-xl">
-              <CardHeader>
-                <CardTitle className="text-2xl">Manage Bookings</CardTitle>
-                <CardDescription>View and remove all hotel bookings.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {bookings.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Hotel</TableHead>
-                        <TableHead>Guest</TableHead>
-                        <TableHead>Dates</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {bookings.sort((a,b) => new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime()).map(booking => (
-                        <TableRow key={booking.id}>
-                          <TableCell className="font-medium">{booking.hotelName}</TableCell>
-                          <TableCell>{booking.bookedByGuestName} ({booking.bookedByGuestEmail})</TableCell>
-                          <TableCell>{format(new Date(booking.checkIn), "PP")} - {format(new Date(booking.checkOut), "PP")}</TableCell>
-                          <TableCell>{booking.status}</TableCell>
-                          <TableCell className="text-right">
-                            <AlertDialogTrigger asChild>
-                              <Button variant="destructive" size="sm" onClick={() => setItemToDelete({ id: booking.id, type: 'booking' })}>
-                                <Trash2 className="h-4 w-4 mr-1" /> Delete
-                              </Button>
-                            </AlertDialogTrigger>
-                          </TableCell>
+              <Card className="shadow-xl">
+                <CardHeader>
+                  <CardTitle className="text-2xl">Manage Users</CardTitle>
+                  <CardDescription>View and remove registered user accounts.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {users.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Full Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : <p className="text-muted-foreground">No bookings made yet.</p>}
-              </CardContent>
-            </Card>
-          </div>
-        )}
-      </div>
+                      </TableHeader>
+                      <TableBody>
+                        {users.map(user => (
+                          <TableRow key={user.id}>
+                            <TableCell className="font-medium">{user.fullName}</TableCell>
+                            <TableCell>{user.email}</TableCell>
+                            <TableCell className="text-right">
+                              {user.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase() && (
+                                  <AlertDialogTrigger asChild>
+                                  <Button variant="destructive" size="sm" onClick={() => setItemToDelete({ id: user.email, type: 'user' })}>
+                                      <Trash2 className="h-4 w-4 mr-1" /> Delete
+                                  </Button>
+                                  </AlertDialogTrigger>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : <p className="text-muted-foreground">No users registered yet.</p>}
+                </CardContent>
+              </Card>
 
-      <AlertDialog open={!!itemToDelete} onOpenChange={(isOpen) => !isOpen && setItemToDelete(null)}>
+              <Card className="shadow-xl">
+                <CardHeader>
+                  <CardTitle className="text-2xl">Manage Bookings</CardTitle>
+                  <CardDescription>View and remove all hotel bookings.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {bookings.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Hotel</TableHead>
+                          <TableHead>Guest</TableHead>
+                          <TableHead>Dates</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {bookings.sort((a,b) => new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime()).map(booking => (
+                          <TableRow key={booking.id}>
+                            <TableCell className="font-medium">{booking.hotelName}</TableCell>
+                            <TableCell>{booking.bookedByGuestName} ({booking.bookedByGuestEmail})</TableCell>
+                            <TableCell>{format(new Date(booking.checkIn), "PP")} - {format(new Date(booking.checkOut), "PP")}</TableCell>
+                            <TableCell>{booking.status}</TableCell>
+                            <TableCell className="text-right">
+                              <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="sm" onClick={() => setItemToDelete({ id: booking.id, type: 'booking' })}>
+                                  <Trash2 className="h-4 w-4 mr-1" /> Delete
+                                </Button>
+                              </AlertDialogTrigger>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : <p className="text-muted-foreground">No bookings made yet.</p>}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
+
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
@@ -334,7 +333,7 @@ export default function AdminDashboardPage() {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
-    </div>
+      </div>
+    </AlertDialog>
   );
 }

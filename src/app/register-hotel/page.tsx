@@ -2,13 +2,14 @@
 "use client";
 
 import { useState } from 'react';
+import type { Hotel, RoomType } from '@/lib/types'; // Import Hotel and RoomType
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
-import { Building, MapPin, FileText, Mail, Globe, Home } from 'lucide-react';
+import { Building, MapPin, FileText, Mail, Globe, Home, DollarSign } from 'lucide-react';
 
 export default function RegisterHotelPage() {
   const { toast } = useToast();
@@ -17,35 +18,84 @@ export default function RegisterHotelPage() {
   const [country, setCountry] = useState('');
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
-  const [contactEmail, setContactEmail] = useState('');
-  const [website, setWebsite] = useState('');
+  const [contactEmail, setContactEmail] = useState(''); // Kept for potential future use
+  const [website, setWebsite] = useState(''); // Kept for potential future use
+  const [pricePerNight, setPricePerNight] = useState('');
 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // For local demonstration, we'll just log the data and show a toast.
-    const formData = {
-      hotelName,
-      city,
-      country,
-      address,
-      description,
-      contactEmail,
-      website,
+
+    const newHotelId = hotelName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+    const parsedPrice = parseFloat(pricePerNight);
+
+    if (isNaN(parsedPrice) || parsedPrice <= 0) {
+      toast({
+        title: "Invalid Price",
+        description: "Please enter a valid price per night.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newHotel: Hotel = {
+      id: newHotelId,
+      name: hotelName,
+      location: {
+        city: city,
+        country: country,
+        address: address,
+      },
+      images: [
+        "https://placehold.co/800x600.png",
+        "https://placehold.co/600x400.png",
+        "https://placehold.co/600x400.png"
+      ], // Default images
+      rating: Math.floor(Math.random() * 3) + 3, // Random rating between 3 and 5 for variety
+      pricePerNight: parsedPrice,
+      description: description,
+      amenities: ['Wifi', 'Parking', 'Air Conditioning', 'Restaurant', 'TV'], // Default amenities
+      roomTypes: [
+        {
+          id: `rt-${Date.now()}`,
+          name: 'Standard Room',
+          price: parsedPrice, // Room price matches hotel's base price
+          beds: 1,
+          maxGuests: 2,
+          image: 'https://placehold.co/600x400.png',
+          description: 'A comfortable standard room equipped with essential amenities.'
+        }
+      ]
     };
-    console.log('Hotel Registration Data:', formData);
-    toast({
-      title: "Property Submitted!",
-      description: "Your hotel registration details have been logged locally.",
-    });
-    // Optionally, reset form fields
-    setHotelName('');
-    setCity('');
-    setCountry('');
-    setAddress('');
-    setDescription('');
-    setContactEmail('');
-    setWebsite('');
+
+    try {
+      const existingHotelsString = localStorage.getItem('registeredHotels');
+      const existingHotels: Hotel[] = existingHotelsString ? JSON.parse(existingHotelsString) : [];
+      existingHotels.push(newHotel);
+      localStorage.setItem('registeredHotels', JSON.stringify(existingHotels));
+
+      toast({
+        title: "Property Submitted!",
+        description: `${hotelName} has been registered locally.`,
+      });
+
+      // Reset form fields
+      setHotelName('');
+      setCity('');
+      setCountry('');
+      setAddress('');
+      setDescription('');
+      setContactEmail('');
+      setWebsite('');
+      setPricePerNight('');
+    } catch (error) {
+      console.error("Error saving to localStorage:", error);
+      toast({
+        title: "Registration Error",
+        description: "Could not save your hotel registration locally. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -123,6 +173,23 @@ export default function RegisterHotelPage() {
                   className="mt-1 h-11"
                 />
               </div>
+              
+              <div>
+                <Label htmlFor="pricePerNight" className="text-base font-semibold flex items-center">
+                  <DollarSign size={18} className="mr-2 text-primary" /> Price Per Night (USD)
+                </Label>
+                <Input
+                  id="pricePerNight"
+                  type="number"
+                  value={pricePerNight}
+                  onChange={(e) => setPricePerNight(e.target.value)}
+                  placeholder="e.g., 150"
+                  required
+                  min="0"
+                  step="1"
+                  className="mt-1 h-11"
+                />
+              </div>
 
               <div>
                 <Label htmlFor="description" className="text-base font-semibold flex items-center">
@@ -140,7 +207,7 @@ export default function RegisterHotelPage() {
               
               <div>
                 <Label htmlFor="contactEmail" className="text-base font-semibold flex items-center">
-                  <Mail size={18} className="mr-2 text-primary" /> Contact Email
+                  <Mail size={18} className="mr-2 text-primary" /> Contact Email (Optional)
                 </Label>
                 <Input
                   id="contactEmail"
@@ -148,7 +215,6 @@ export default function RegisterHotelPage() {
                   value={contactEmail}
                   onChange={(e) => setContactEmail(e.target.value)}
                   placeholder="e.g., contact@yourhotel.com"
-                  required
                   className="mt-1 h-11"
                 />
               </div>

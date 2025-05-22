@@ -1,20 +1,28 @@
+
+"use client";
+
+import { useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
-import { notFound } from 'next/navigation';
-import { getHotelById, getAllHotels, type Hotel } from '@/lib/types';
+import { notFound, useParams } from 'next/navigation';
+import { getHotelById as getMockHotelById, type Hotel, type RoomType } from '@/lib/types';
 import StarRating from '@/components/star-rating';
 import BookingSection from '@/components/booking-section';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { MapPin, CheckCircle, Wifi, Utensils, ParkingCircle, Droplet, Wind, Tv, Info, BedDouble } from 'lucide-react';
+import HotelDetailsLoading from './loading'; // Use the existing loading component
 
-export const dynamic = 'force-static'; // Or 'auto' if data fetching logic changes
-export const revalidate = 3600; // Revalidate every hour if data is static but can change
+// export const dynamic = 'force-static'; // Cannot be static if fetching from localStorage
+// export const revalidate = 3600;
 
-export async function generateStaticParams() {
-  // Fetch all hotel IDs from the API
-  const hotels = await getAllHotels();
-  return hotels.map(hotel => ({ id: hotel.id }));
-}
+// generateStaticParams would only work for mockHotels. 
+// For localStorage hotels, routes will be dynamic.
+// export async function generateStaticParams() {
+//   // Fetch all hotel IDs from the API
+//   const hotels = await getAllMockHotels(); // Assuming a function that gets only mock ones
+//   return hotels.map(hotel => ({ id: hotel.id }));
+// }
+
 
 interface AmenityIconProps {
   amenity: string;
@@ -28,7 +36,7 @@ function AmenityIcon({ amenity, className = "h-5 w-5 text-primary" }: AmenityIco
     case 'parking': return <ParkingCircle className={className} />;
     case 'air conditioning': return <Wind className={className} />;
     case 'restaurant': return <Utensils className={className} />;
-    case 'gym': return <CheckCircle className={className} />; // Placeholder - consider specific icons
+    case 'gym': return <CheckCircle className={className} />; // Placeholder
     case 'pet friendly': return <CheckCircle className={className} />; // Placeholder
     case 'spa': return <CheckCircle className={className} />; // Placeholder
     case 'beach access': return <CheckCircle className={className} />; // Placeholder
@@ -42,12 +50,50 @@ function AmenityIcon({ amenity, className = "h-5 w-5 text-primary" }: AmenityIco
   }
 }
 
+function HotelDetailsContent() {
+  const params = useParams();
+  const id = params.id as string;
 
-export default async function HotelDetailsPage({ params }: { params: { id: string } }) {
-  const hotel = await getHotelById(params.id);
+  const [hotel, setHotel] = useState<Hotel | null | undefined>(undefined); // undefined for loading, null for not found
+
+  useEffect(() => {
+    if (!id) return;
+
+    let foundHotel: Hotel | undefined = undefined;
+
+    // 1. Try to load from localStorage
+    try {
+      const storedHotelsString = localStorage.getItem('registeredHotels');
+      if (storedHotelsString) {
+        const registeredHotels: Hotel[] = JSON.parse(storedHotelsString);
+        foundHotel = registeredHotels.find(h => h.id === id);
+      }
+    } catch (error) {
+      console.error("Error reading registered hotels from localStorage:", error);
+    }
+
+    // 2. If not found in localStorage, try to load from mock data (async)
+    if (!foundHotel) {
+      getMockHotelById(id).then(mockHotel => {
+        if (mockHotel) {
+          setHotel(mockHotel);
+        } else {
+          setHotel(null); // Mark as not found
+        }
+      }).catch(() => {
+        setHotel(null); // Error fetching, mark as not found
+      });
+    } else {
+      setHotel(foundHotel);
+    }
+  }, [id]);
+
+  if (hotel === undefined) { // Still loading
+    return <HotelDetailsLoading />;
+  }
 
   if (!hotel) {
-    notFound();
+    notFound(); // Triggers the not-found UI
   }
 
   return (
@@ -79,12 +125,12 @@ export default async function HotelDetailsPage({ params }: { params: { id: strin
                 />
               </div>
             ))}
-             {hotel.images.length < 3 && hotel.images.length > 1 && ( 
+             {hotel.images.length < 3 && hotel.images.length === 2 && ( 
               <div className="h-[200px] md:h-[246px] bg-muted flex items-center justify-center rounded-lg">
                 <BedDouble className="h-12 w-12 text-muted-foreground" />
               </div>
             )}
-             {hotel.images.length === 1 && ( // Fill both small slots if only 1 image total
+             {hotel.images.length === 1 && ( 
               <>
                 <div className="h-[200px] md:h-[246px] bg-muted flex items-center justify-center rounded-lg">
                   <BedDouble className="h-12 w-12 text-muted-foreground" />
@@ -125,14 +171,18 @@ export default async function HotelDetailsPage({ params }: { params: { id: strin
                 <CardTitle className="text-xl">Amenities</CardTitle>
               </CardHeader>
               <CardContent>
-                <ul className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3">
-                  {hotel.amenities.map((amenity) => (
-                    <li key={amenity} className="flex items-center text-foreground/90">
-                      <AmenityIcon amenity={amenity} className="h-5 w-5 mr-2.5 text-primary flex-shrink-0" />
-                      <span>{amenity}</span>
-                    </li>
-                  ))}
-                </ul>
+                 {hotel.amenities.length > 0 ? (
+                    <ul className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3">
+                    {hotel.amenities.map((amenity) => (
+                        <li key={amenity} className="flex items-center text-foreground/90">
+                        <AmenityIcon amenity={amenity} className="h-5 w-5 mr-2.5 text-primary flex-shrink-0" />
+                        <span>{amenity}</span>
+                        </li>
+                    ))}
+                    </ul>
+                 ) : (
+                    <p className="text-muted-foreground">No amenities listed for this hotel.</p>
+                 )}
               </CardContent>
             </Card>
 
@@ -141,7 +191,7 @@ export default async function HotelDetailsPage({ params }: { params: { id: strin
                 <CardTitle className="text-xl">Room Options</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {hotel.roomTypes.map((room) => (
+                {hotel.roomTypes && hotel.roomTypes.length > 0 ? hotel.roomTypes.map((room) => (
                   <div key={room.id} className="flex flex-col sm:flex-row gap-4 p-4 border rounded-lg hover:shadow-md transition-shadow">
                     <Image 
                       src={room.image || "https://placehold.co/600x400.png"} 
@@ -158,7 +208,9 @@ export default async function HotelDetailsPage({ params }: { params: { id: strin
                       <p className="text-lg font-semibold">${room.price} <span className="text-xs text-muted-foreground">/ night</span></p>
                     </div>
                   </div>
-                ))}
+                )) : (
+                    <p className="text-muted-foreground">No room types available for this hotel.</p>
+                )}
               </CardContent>
             </Card>
 
@@ -171,5 +223,14 @@ export default async function HotelDetailsPage({ params }: { params: { id: strin
         </div>
       </div>
     </div>
+  );
+}
+
+
+export default function HotelDetailsPage() {
+  return (
+    <Suspense fallback={<HotelDetailsLoading />}>
+      <HotelDetailsContent />
+    </Suspense>
   );
 }

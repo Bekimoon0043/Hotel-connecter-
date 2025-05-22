@@ -9,7 +9,7 @@ import StarRating from '@/components/star-rating';
 import BookingSection from '@/components/booking-section';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { MapPin, CheckCircle, Wifi, Utensils, ParkingCircle, Droplet, Wind, Tv, Info, BedDouble, ImageOff, Users, Bed, DollarSign } from 'lucide-react';
+import { MapPin, CheckCircle, Wifi, Utensils, ParkingCircle, Droplet, Wind, Tv, Info, BedDouble, ImageOff, Users, Bed, DollarSign, Sparkles } from 'lucide-react';
 import HotelDetailsLoading from './loading'; 
 
 interface AmenityIconProps {
@@ -87,19 +87,7 @@ function HotelDetailsContent() {
   }
 
   // Ensure hotel.images is an array and has at least 3 elements (can be placeholders)
-  const hotelImages = hotel.images && hotel.images.length > 0 ? hotel.images : [
-    "https://placehold.co/800x600.png", 
-    "https://placehold.co/600x400.png", 
-    "https://placehold.co/600x400.png"
-  ];
-  // The registration process now ensures 3 images are always present.
-  // So this `while` loop may not be strictly necessary if all data comes from new registration.
-  // However, keeping it for robustness with potentially old mock data.
-  const displayImages = [...hotelImages];
-  while (displayImages.length < 3) {
-    displayImages.push(displayImages.length === 0 ? "https://placehold.co/800x600.png" : "https://placehold.co/600x400.png");
-  }
-
+  const displayImages = [...hotel.images]; // Assumes register-hotel ensures 3 images
 
   return (
     <div className="py-8 md:py-12 bg-muted/40">

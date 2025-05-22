@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -20,11 +21,7 @@ interface BookingSectionProps {
 
 export default function BookingSection({ hotel }: BookingSectionProps) {
   const { toast } = useToast();
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-    const today = new Date();
-    const tomorrow = addDays(today, 1);
-    return { from: today, to: tomorrow };
-  });
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [guests, setGuests] = useState(1);
   const [selectedRoom, setSelectedRoom] = useState<RoomType | undefined>(hotel.roomTypes[0]);
   const [totalPrice, setTotalPrice] = useState(0);
@@ -32,6 +29,10 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
 
   useEffect(() => {
     setIsClient(true);
+    // Initialize dateRange here to ensure new Date() is called client-side
+    const today = new Date();
+    const tomorrow = addDays(today, 1);
+    setDateRange({ from: today, to: tomorrow });
   }, []);
 
   useEffect(() => {
@@ -40,10 +41,13 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
       if (nights > 0) {
         setTotalPrice(nights * selectedRoom.price * guests);
       } else {
-        setTotalPrice(0);
+        // If dates are the same or checkout is before checkin, but a room is selected
+        setTotalPrice(selectedRoom.price * guests); 
       }
     } else if (selectedRoom) {
       setTotalPrice(selectedRoom.price * guests); // Price for 1 night if no range
+    } else {
+      setTotalPrice(0);
     }
   }, [dateRange, guests, selectedRoom]);
 
@@ -52,6 +56,14 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
       toast({
         title: "Incomplete Information",
         description: "Please select dates and a room type.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (differenceInDays(dateRange.to, dateRange.from) <= 0) {
+      toast({
+        title: "Invalid Date Range",
+        description: "Check-out date must be after check-in date.",
         variant: "destructive",
       });
       return;

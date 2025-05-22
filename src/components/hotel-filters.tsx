@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -6,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { Filter, Star, DollarSign, Wifi, ParkingCircle, Utensils } from 'lucide-react';
+import { Filter, Star, DollarSign, Wifi, ParkingCircle, Utensils, Droplet } from 'lucide-react';
 
 // This is a mock component. Actual filtering would require state management and API calls.
 export default function HotelFilters() {
@@ -16,7 +17,7 @@ export default function HotelFilters() {
     { id: "wifi", label: "Wi-Fi", icon: <Wifi size={18} className="mr-2 text-primary" /> },
     { id: "parking", label: "Parking", icon: <ParkingCircle size={18} className="mr-2 text-primary" /> },
     { id: "kitchen", label: "Kitchen", icon: <Utensils size={18} className="mr-2 text-primary" /> },
-    { id: "pool", label: "Pool", icon: <Filter size={18} className="mr-2 text-primary"/> /* Placeholder icon */},
+    { id: "pool", label: "Pool", icon: <Droplet size={18} className="mr-2 text-primary"/> },
   ];
 
   const ratings = [5, 4, 3];

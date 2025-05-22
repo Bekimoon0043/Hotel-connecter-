@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Hotel } from '@/lib/types';
@@ -11,12 +12,16 @@ interface HotelCardProps {
 }
 
 export default function HotelCard({ hotel }: HotelCardProps) {
+  const primaryImage = (hotel.images && hotel.images.length > 0 && hotel.images[0]) 
+    ? hotel.images[0] 
+    : "https://placehold.co/400x250.png";
+
   return (
     <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col h-full">
       <CardHeader className="p-0 relative">
         <Link href={`/hotel/${hotel.id}`} className="block">
           <Image
-            src={hotel.images[0]}
+            src={primaryImage}
             alt={`Image of ${hotel.name}`}
             width={400}
             height={250}

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Menu, BedDouble, LogOut, UserCircle, LayoutDashboard, Building, ShieldCheck } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import type { CurrentUser } from '@/lib/types'; // Import consolidated type
@@ -57,18 +57,15 @@ export default function Header() {
     let items = [...baseNavItems];
     if (currentUser?.role === 'admin') {
       items.push(adminDashboardItem);
-      // Admins can also see owner items if desired, or have a completely separate view.
-      // For now, let's assume admin also gets owner links for convenience in local dev.
       items.push(ownerDashboardItem);
       items.push(ownerNavItem);
     } else if (currentUser?.role === 'owner') {
       items.push(ownerDashboardItem);
       items.push(ownerNavItem); 
-    } else if (!currentUser) {
-      // Not logged in, show "List your property" (page itself will handle auth check)
+    } else if (!currentUser) { // Not logged in
       items.push(ownerNavItem);
     }
-    // If currentUser exists and role is 'booker', ownerNavItem is NOT added.
+    // If currentUser exists and role is 'booker', ownerNavItem is NOT added from here.
     return items;
   };
   
@@ -138,7 +135,10 @@ export default function Header() {
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[300px] sm:w-[320px] p-6 flex flex-col">
-              <nav className="flex flex-col gap-3 mt-8 flex-grow">
+              <SheetHeader className="mb-4 text-left">
+                <SheetTitle>Navigation Menu</SheetTitle>
+              </SheetHeader>
+              <nav className="flex flex-col gap-3 flex-grow">
                 {currentUser && (
                   <div className="px-2 py-3 border-b mb-3">
                       <div className="flex items-center gap-2">

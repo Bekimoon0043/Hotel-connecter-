@@ -10,9 +10,10 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
 import { LogIn, Mail, Lock } from 'lucide-react';
-import type { StoredUser, CurrentUser } from '@/lib/types'; // Import consolidated types
+import type { StoredUser, CurrentUser } from '@/lib/types'; 
 
-const ADMIN_EMAIL = "admin@hotelconnector.com"; // Hardcoded admin email
+const ADMIN_EMAIL = "bekimoon@gmail.com"; // Updated Admin Email
+const ADMIN_PASSWORD = "87654321"; // Hardcoded Admin Password
 
 function SignInForm() {
   const { toast } = useToast();
@@ -28,6 +29,34 @@ function SignInForm() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    let currentUserData: CurrentUser | null = null;
+
+    // Special check for hardcoded admin user
+    if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+      if (password === ADMIN_PASSWORD) {
+        currentUserData = {
+          email: ADMIN_EMAIL,
+          fullName: "Admin Bekimoon", // Default admin full name
+          role: 'admin',
+        };
+        localStorage.setItem('currentUser', JSON.stringify(currentUserData));
+        toast({
+          title: "Admin Sign In Successful!",
+          description: `Welcome, ${currentUserData.fullName}! You are signed in as admin.`,
+        });
+        router.push(redirectParam || '/admin/dashboard');
+        return;
+      } else {
+        toast({
+          title: "Admin Sign In Failed",
+          description: "Invalid admin password.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    // Regular user sign-in logic
     try {
       const existingUsersString = localStorage.getItem('registeredUsers');
       if (!existingUsersString) {
@@ -40,7 +69,7 @@ function SignInForm() {
       }
 
       const existingUsers: StoredUser[] = JSON.parse(existingUsersString);
-      const user = existingUsers.find(u => u.email === email);
+      const user = existingUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
 
       if (!user) {
         toast({
@@ -55,17 +84,24 @@ function SignInForm() {
       if (user.passwordHash === password) { 
         let determinedRole: CurrentUser['role'] = 'booker'; // Default role
 
-        if (email === ADMIN_EMAIL) {
-          determinedRole = 'admin';
-        } else if (roleParam) {
+        // If roleParam is provided, use it (unless it's admin, which is handled above)
+        if (roleParam && roleParam !== 'admin') {
           determinedRole = roleParam;
         }
-        // Note: If a user signs up as 'owner' via ?role=owner, and then signs in without ?role=owner,
-        // they might default to 'booker' here unless we store their intended role during signup.
-        // For simplicity now, roleParam during sign-in can override or set the role for the session.
-        // If an admin signs in, their role is always 'admin'.
+        // We need to ensure a user who signed up as 'owner' maintains that role.
+        // A better approach would be to store the user's primary role during signup.
+        // For now, if their email matches an owner of a hotel, they are an owner.
+        // This is a simplification.
+        const registeredHotelsStr = localStorage.getItem('registeredHotels');
+        if (registeredHotelsStr) {
+            const registeredHotels = JSON.parse(registeredHotelsStr);
+            if (registeredHotels.some((hotel: { ownerEmail: string; }) => hotel.ownerEmail === user.email)) {
+                determinedRole = 'owner';
+            }
+        }
 
-        const currentUserData: CurrentUser = {
+
+        currentUserData = {
           email: user.email,
           fullName: user.fullName,
           role: determinedRole,
@@ -79,10 +115,8 @@ function SignInForm() {
         
         if (redirectParam) {
           router.push(redirectParam);
-        } else if (determinedRole === 'admin') {
-          router.push('/admin/dashboard');
         } else if (determinedRole === 'owner') {
-          router.push('/dashboard/owner'); // Or /register-hotel
+          router.push('/dashboard/owner');
         } else {
           router.push('/explore'); 
         }

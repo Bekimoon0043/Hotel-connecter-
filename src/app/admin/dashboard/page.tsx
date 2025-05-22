@@ -29,7 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ShieldAlert, Trash2, Users, Building, ListChecks, Briefcase } from 'lucide-react';
 import { format } from 'date-fns';
 
-const ADMIN_EMAIL = "admin@hotelconnector.com";
+const ADMIN_EMAIL = "bekimoon@gmail.com"; // Updated Admin Email
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -51,7 +51,7 @@ export default function AdminDashboardPage() {
       try {
         const user: CurrentUser = JSON.parse(userStr);
         setCurrentUser(user);
-        if (user.role !== 'admin' || user.email !== ADMIN_EMAIL) {
+        if (user.role !== 'admin' || user.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
           toast({
             title: "Access Denied",
             description: "You do not have permission to view this page.",
@@ -64,10 +64,10 @@ export default function AdminDashboardPage() {
       } catch (e) {
         toast({ title: "Error", description: "Failed to verify admin status.", variant: "destructive" });
         localStorage.removeItem('currentUser');
-        router.push('/signin?role=admin&redirect=/admin/dashboard');
+        router.push(`/signin?role=admin&redirect=/admin/dashboard`);
       }
     } else {
-      router.push('/signin?role=admin&redirect=/admin/dashboard');
+      router.push(`/signin?role=admin&redirect=/admin/dashboard`);
     }
     setIsLoadingAuth(false);
   }, [router, toast]);
@@ -101,22 +101,29 @@ export default function AdminDashboardPage() {
         const updatedHotels = hotels.filter(h => h.id !== id);
         localStorage.setItem('registeredHotels', JSON.stringify(updatedHotels));
         setHotels(updatedHotels);
-        // Optional: Delete bookings associated with this hotel
+        
         const updatedBookings = bookings.filter(b => b.hotelId !== id);
         localStorage.setItem('hotelBookings', JSON.stringify(updatedBookings));
         setBookings(updatedBookings);
         success = true;
       } else if (type === 'user') {
-        if (currentUser && id === currentUser.email) { // Prevent admin from deleting themselves easily
+        if (currentUser && id.toLowerCase() === currentUser.email.toLowerCase() && currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) { 
              toast({ title: "Action Restricted", description: "Admin account cannot be deleted this way.", variant: "warning" });
              setItemToDelete(null);
              return;
         }
-        const updatedUsers = users.filter(u => u.email !== id); // Assuming user ID is email for StoredUser
+        const updatedUsers = users.filter(u => u.email.toLowerCase() !== id.toLowerCase()); 
         localStorage.setItem('registeredUsers', JSON.stringify(updatedUsers));
         setUsers(updatedUsers);
-        // Optional: Handle user's hotels or bookings (e.g., reassign/delete)
-        // For simplicity, we'll just delete the user for now.
+        
+        // Optional: Delete bookings made by this user
+        const bookingsOfUser = bookings.filter(b => b.bookedByGuestEmail.toLowerCase() === id.toLowerCase());
+        const remainingBookings = bookings.filter(b => b.bookedByGuestEmail.toLowerCase() !== id.toLowerCase());
+        if (bookingsOfUser.length > 0) {
+             localStorage.setItem('hotelBookings', JSON.stringify(remainingBookings));
+             setBookings(remainingBookings);
+             toast({ title: "User's Bookings Deleted", description: `Deleted ${bookingsOfUser.length} booking(s) made by this user.`, variant: "info" });
+        }
         success = true;
       } else if (type === 'booking') {
         const updatedBookings = bookings.filter(b => b.id !== id);
@@ -132,7 +139,7 @@ export default function AdminDashboardPage() {
       console.error(`Error deleting ${type}:`, e);
       toast({ title: "Deletion Error", description: `Could not delete ${type}.`, variant: "destructive" });
     }
-    setItemToDelete(null); // Close dialog
+    setItemToDelete(null); 
   };
 
   if (isLoadingAuth || (!currentUser && !isLoadingAuth)) {
@@ -149,8 +156,7 @@ export default function AdminDashboardPage() {
     );
   }
 
-  if (!currentUser || currentUser.role !== 'admin') {
-    // This case should ideally be caught by useEffect redirect, but as a fallback:
+  if (!currentUser || currentUser.role !== 'admin' || currentUser.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen py-12 bg-muted/20">
         <Card className="shadow-xl p-8 text-center">
@@ -195,7 +201,6 @@ export default function AdminDashboardPage() {
           <div className="text-center py-10">Loading data...</div>
         ) : (
           <div className="space-y-12">
-            {/* Hotels Management */}
             <Card className="shadow-xl">
               <CardHeader>
                 <CardTitle className="text-2xl">Manage Hotels</CardTitle>
@@ -233,7 +238,6 @@ export default function AdminDashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Users Management */}
             <Card className="shadow-xl">
               <CardHeader>
                 <CardTitle className="text-2xl">Manage Users</CardTitle>
@@ -246,7 +250,6 @@ export default function AdminDashboardPage() {
                       <TableRow>
                         <TableHead>Full Name</TableHead>
                         <TableHead>Email</TableHead>
-                        {/* <TableHead>Role (Inferred)</TableHead> */}
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -255,9 +258,8 @@ export default function AdminDashboardPage() {
                         <TableRow key={user.id}>
                           <TableCell className="font-medium">{user.fullName}</TableCell>
                           <TableCell>{user.email}</TableCell>
-                          {/* <TableCell>{user.email === ADMIN_EMAIL ? 'Admin' : 'User'}</TableCell> */}
                           <TableCell className="text-right">
-                             {user.email !== ADMIN_EMAIL && (
+                             {user.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase() && (
                                 <AlertDialogTrigger asChild>
                                 <Button variant="destructive" size="sm" onClick={() => setItemToDelete({ id: user.email, type: 'user' })}>
                                     <Trash2 className="h-4 w-4 mr-1" /> Delete
@@ -273,7 +275,6 @@ export default function AdminDashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Bookings Management */}
             <Card className="shadow-xl">
               <CardHeader>
                 <CardTitle className="text-2xl">Manage Bookings</CardTitle>
@@ -316,7 +317,6 @@ export default function AdminDashboardPage() {
         )}
       </div>
 
-      {/* Universal Delete Confirmation Dialog */}
       <AlertDialog open={!!itemToDelete} onOpenChange={(isOpen) => !isOpen && setItemToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -324,6 +324,7 @@ export default function AdminDashboardPage() {
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the selected {itemToDelete?.type}
               {itemToDelete?.type === 'hotel' && ' and all its associated bookings'}.
+              {itemToDelete?.type === 'user' && ' and all bookings made by this user'}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

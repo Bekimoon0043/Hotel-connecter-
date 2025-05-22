@@ -10,9 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
 import { UserPlus, User, Mail, Lock } from 'lucide-react';
-import type { StoredUser, CurrentUser } from '@/lib/types'; // Import consolidated types
+import type { StoredUser, CurrentUser } from '@/lib/types';
 
-const ADMIN_EMAIL = "admin@hotelconnector.com"; // Hardcoded admin email
+const ADMIN_EMAIL = "bekimoon@gmail.com"; // Updated Admin Email
 
 function SignUpForm() {
   const { toast } = useToast();
@@ -33,7 +33,7 @@ function SignUpForm() {
     if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
       toast({
         title: "Registration Failed",
-        description: "This email address is reserved for administrative use.",
+        description: "This email address is reserved. Please use a different email.",
         variant: "destructive",
       });
       return;
@@ -70,7 +70,7 @@ function SignUpForm() {
       const existingUsersString = localStorage.getItem('registeredUsers');
       const existingUsers: StoredUser[] = existingUsersString ? JSON.parse(existingUsersString) : [];
       
-      if (existingUsers.some(user => user.email === email)) {
+      if (existingUsers.some(user => user.email.toLowerCase() === email.toLowerCase())) {
         toast({
           title: "Registration Failed",
           description: "An account with this email already exists.",
@@ -99,7 +99,7 @@ function SignUpForm() {
       if (redirectParam) {
         router.push(redirectParam);
       } else if (determinedRole === 'owner') {
-        router.push('/dashboard/owner'); // Or /register-hotel
+        router.push('/dashboard/owner'); 
       } else {
         router.push('/explore');
       }

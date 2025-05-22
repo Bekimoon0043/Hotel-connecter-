@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 interface CurrentUser {
   email: string;
   fullName: string;
-  role: 'owner' | 'booker';
+  role: 'owner' | 'booker' | 'admin';
 }
 
 export default function LandingPage() {
@@ -36,7 +36,7 @@ export default function LandingPage() {
   }, []);
 
   const handleOwnerClick = () => {
-    if (currentUser && currentUser.role === 'owner') {
+    if (currentUser && (currentUser.role === 'owner' || currentUser.role === 'admin')) {
       router.push('/register-hotel');
     } else {
       router.push('/signin?role=owner&redirect=/register-hotel');
@@ -71,12 +71,12 @@ export default function LandingPage() {
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-var(--header-height,4rem)-var(--footer-height,4rem))] py-12 bg-gradient-to-br from-primary/10 via-background to-background">
       <div className="text-center mb-12 px-4">
         <Image 
-            src="https://placehold.co/300x150.png" 
+            src="/luxury-hotel-logo.png" 
             alt="Hotel Connector Logo" 
-            width={240} 
-            height={120} 
+            width={200} 
+            height={200} 
             className="mx-auto mb-6 rounded-lg shadow-md"
-            data-ai-hint="logo brand"
+            priority
         />
         <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3">
           Welcome to <span className="text-primary">Hotel Connector</span>

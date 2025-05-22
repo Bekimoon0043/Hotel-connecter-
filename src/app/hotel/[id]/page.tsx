@@ -12,18 +12,6 @@ import { Separator } from '@/components/ui/separator';
 import { MapPin, CheckCircle, Wifi, Utensils, ParkingCircle, Droplet, Wind, Tv, Info, BedDouble } from 'lucide-react';
 import HotelDetailsLoading from './loading'; // Use the existing loading component
 
-// export const dynamic = 'force-static'; // Cannot be static if fetching from localStorage
-// export const revalidate = 3600;
-
-// generateStaticParams would only work for mockHotels. 
-// For localStorage hotels, routes will be dynamic.
-// export async function generateStaticParams() {
-//   // Fetch all hotel IDs from the API
-//   const hotels = await getAllMockHotels(); // Assuming a function that gets only mock ones
-//   return hotels.map(hotel => ({ id: hotel.id }));
-// }
-
-
 interface AmenityIconProps {
   amenity: string;
   className?: string;
@@ -36,12 +24,12 @@ function AmenityIcon({ amenity, className = "h-5 w-5 text-primary" }: AmenityIco
     case 'parking': return <ParkingCircle className={className} />;
     case 'air conditioning': return <Wind className={className} />;
     case 'restaurant': return <Utensils className={className} />;
-    case 'gym': return <CheckCircle className={className} />; // Placeholder
-    case 'pet friendly': return <CheckCircle className={className} />; // Placeholder
-    case 'spa': return <CheckCircle className={className} />; // Placeholder
+    case 'gym': return <CheckCircle className={className} />; // Placeholder, consider a more specific icon like Dumbbell
+    case 'pet friendly': return <CheckCircle className={className} />; // Placeholder, consider PawPrint
+    case 'spa': return <CheckCircle className={className} />; // Placeholder, consider Sparkles or similar
     case 'beach access': return <CheckCircle className={className} />; // Placeholder
-    case 'fireplace': return <CheckCircle className={className} />; // Placeholder
-    case 'bar': return <CheckCircle className={className} />; // Placeholder
+    case 'fireplace': return <CheckCircle className={className} />; // Placeholder, consider Flame
+    case 'bar': return <CheckCircle className={className} />; // Placeholder, consider GlassWater or Wine
     case 'lake view': return <CheckCircle className={className} />; // Placeholder
     case 'boat tours': return <CheckCircle className={className} />; // Placeholder
     case 'desert safari': return <CheckCircle className={className} />; // Placeholder
@@ -127,16 +115,16 @@ function HotelDetailsContent() {
             ))}
              {hotel.images.length < 3 && hotel.images.length === 2 && ( 
               <div className="h-[200px] md:h-[246px] bg-muted flex items-center justify-center rounded-lg">
-                <BedDouble className="h-12 w-12 text-muted-foreground" />
+                <BedDouble className="h-12 w-12 text-muted-foreground" data-ai-hint="bedroom interior" />
               </div>
             )}
              {hotel.images.length === 1 && ( 
               <>
                 <div className="h-[200px] md:h-[246px] bg-muted flex items-center justify-center rounded-lg">
-                  <BedDouble className="h-12 w-12 text-muted-foreground" />
+                  <BedDouble className="h-12 w-12 text-muted-foreground" data-ai-hint="bedroom furniture" />
                 </div>
                 <div className="h-[200px] md:h-[246px] bg-muted flex items-center justify-center rounded-lg">
-                  <BedDouble className="h-12 w-12 text-muted-foreground" />
+                  <BedDouble className="h-12 w-12 text-muted-foreground" data-ai-hint="bed hotel" />
                 </div>
               </>
             )}
@@ -171,7 +159,7 @@ function HotelDetailsContent() {
                 <CardTitle className="text-xl">Amenities</CardTitle>
               </CardHeader>
               <CardContent>
-                 {hotel.amenities.length > 0 ? (
+                 {hotel.amenities && hotel.amenities.length > 0 ? (
                     <ul className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3">
                     {hotel.amenities.map((amenity) => (
                         <li key={amenity} className="flex items-center text-foreground/90">

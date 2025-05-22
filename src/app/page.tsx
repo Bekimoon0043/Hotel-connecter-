@@ -1,14 +1,12 @@
+
 import HotelSearchForm from '@/components/hotel-search-form';
-import HotelCard from '@/components/hotel-card';
-import { getAllHotels, type Hotel } from '@/lib/types';
+import { getAllHotels } from '@/lib/types'; // Keep getAllHotels
 import Image from 'next/image';
+import PopularHotelsSection from '@/components/popular-hotels-section'; // Import the new component
 
 export default async function HomePage() {
-  // Fetch popular hotels from the API
-  const allHotels = await getAllHotels();
-  // You might want a specific API endpoint for "popular" hotels
-  // For now, slicing the first 6 as before
-  const popularHotels = allHotels.slice(0, 6); 
+  // Fetch all mock hotels from the API/mock data source
+  const allMockHotels = await getAllHotels(); 
 
   return (
     <>
@@ -39,24 +37,8 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Popular Hotels Section */}
-      <section className="py-16 lg:py-24 bg-background">
-        <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center mb-4">Popular Destinations</h2>
-          <p className="text-center text-muted-foreground mb-12 max-w-xl mx-auto">
-            Explore top-rated hotels in the most sought-after locations. Unforgettable experiences await.
-          </p>
-          {popularHotels.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {popularHotels.map((hotel) => (
-                <HotelCard key={hotel.id} hotel={hotel} />
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-muted-foreground">No popular hotels to display at the moment. Check back later!</p>
-          )}
-        </div>
-      </section>
+      {/* Popular Hotels Section - Now uses the client component */}
+      <PopularHotelsSection initialHotels={allMockHotels} />
     </>
   );
 }

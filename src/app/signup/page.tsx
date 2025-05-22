@@ -10,6 +10,13 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from "@/hooks/use-toast";
 import { UserPlus, User, Mail, Lock } from 'lucide-react';
 
+interface StoredUser {
+  id: string;
+  fullName: string;
+  email: string;
+  passwordHash: string; // In a real app, this would be a securely hashed password.
+}
+
 export default function SignUpPage() {
   const { toast } = useToast();
   const [fullName, setFullName] = useState('');
@@ -27,18 +34,55 @@ export default function SignUpPage() {
       });
       return;
     }
-    // For local demonstration, we'll just log the data and show a toast.
-    const userData = { fullName, email, password };
-    console.log('Sign Up Data:', userData);
-    toast({
-      title: "Sign Up Successful!",
-      description: "Your account has been created (locally). You can now sign in.",
-    });
-    // Optionally, reset form fields
-    setFullName('');
-    setEmail('');
-    setPassword('');
-    setConfirmPassword('');
+
+    // **VERY IMPORTANT SECURITY NOTE:**
+    // Storing plain text or easily reversible passwords in localStorage is extremely insecure
+    // and should NEVER be done in a production application.
+    // This is a simplified approach for local demonstration ONLY.
+    // In a real application, passwords should be securely hashed on a server.
+    const newUser: StoredUser = {
+      id: Date.now().toString(), // Simple unique ID for local demo
+      fullName,
+      email,
+      passwordHash: password, // Storing password directly for local demo ONLY. DO NOT DO THIS IN PRODUCTION.
+    };
+
+    try {
+      const existingUsersString = localStorage.getItem('registeredUsers');
+      const existingUsers: StoredUser[] = existingUsersString ? JSON.parse(existingUsersString) : [];
+      
+      // Check if email already exists
+      if (existingUsers.some(user => user.email === email)) {
+        toast({
+          title: "Registration Failed",
+          description: "An account with this email already exists.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      existingUsers.push(newUser);
+      localStorage.setItem('registeredUsers', JSON.stringify(existingUsers));
+
+      console.log('New User Registered (Locally):', { fullName, email }); // Don't log password
+      toast({
+        title: "Sign Up Successful!",
+        description: "Your account has been created locally. You can now sign in.",
+      });
+
+      // Reset form fields
+      setFullName('');
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      console.error("Error saving to localStorage:", error);
+      toast({
+        title: "Registration Error",
+        description: "Could not save your registration locally. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

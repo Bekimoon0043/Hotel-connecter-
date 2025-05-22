@@ -3,14 +3,16 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Hotel } from '@/lib/types'; 
+import type { Hotel, Amenity } from '@/lib/types'; 
+import { ALL_AMENITIES } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
-import { Building, MapPin, FileText, Mail, Globe, Home, DollarSign, Image as ImageIcon, ShieldAlert, CheckCircle } from 'lucide-react';
+import { Building, MapPin, FileText, Mail, Globe, Home, DollarSign, Image as ImageIcon, ShieldAlert, CheckCircle, Sparkles } from 'lucide-react';
 
 interface CurrentUser {
   email: string;
@@ -32,6 +34,7 @@ export default function RegisterHotelPage() {
   const [contactEmail, setContactEmail] = useState('');
   const [website, setWebsite] = useState('');
   const [pricePerNight, setPricePerNight] = useState('');
+  const [selectedAmenities, setSelectedAmenities] = useState<Amenity[]>([]);
 
   const [hotelImageFile1, setHotelImageFile1] = useState<File | null>(null);
   const [imagePreviewUrl1, setImagePreviewUrl1] = useState<string | null>(null);
@@ -79,6 +82,12 @@ export default function RegisterHotelPage() {
       setFile(null);
       setPreview(null);
     }
+  };
+
+  const handleAmenityChange = (amenity: Amenity, checked: boolean | string) => {
+    setSelectedAmenities(prev => 
+      checked === true ? [...prev, amenity] : prev.filter(a => a !== amenity)
+    );
   };
 
   const convertFileToDataURL = (file: File): Promise<string> => {
@@ -132,13 +141,11 @@ export default function RegisterHotelPage() {
           description: "Could not process one or more uploaded images. Using default images.",
           variant: "destructive",
         });
-        // Ensure hotelImages has 3 placeholders if an error occurs during conversion
         while(hotelImages.length < 3) {
             if(hotelImages.length === 0) hotelImages.push("https://placehold.co/800x600.png");
             else hotelImages.push("https://placehold.co/600x400.png");
         }
     }
-
 
     const newHotel: Hotel = {
       id: newHotelId,
@@ -150,11 +157,11 @@ export default function RegisterHotelPage() {
         address: address,
       },
       images: hotelImages,
-      rating: Math.floor(Math.random() * 2) + 3.5, 
+      rating: Math.floor(Math.random() * 3 + 20) / 10, // Random rating between 2.0 and 4.9 
       pricePerNight: parsedPrice,
       description: description,
-      amenities: ['Wifi', 'Parking', 'Air Conditioning', 'Restaurant', 'TV', 'Pool'], 
-      roomTypes: [
+      amenities: selectedAmenities, 
+      roomTypes: [ // Default room type
         {
           id: `rt-${Date.now()}`,
           name: 'Standard Room',
@@ -192,6 +199,7 @@ export default function RegisterHotelPage() {
       setContactEmail('');
       setWebsite('');
       setPricePerNight('');
+      setSelectedAmenities([]);
       setHotelImageFile1(null); setImagePreviewUrl1(null);
       setHotelImageFile2(null); setImagePreviewUrl2(null);
       setHotelImageFile3(null); setImagePreviewUrl3(null);
@@ -230,7 +238,7 @@ export default function RegisterHotelPage() {
             <div className="h-5 bg-muted rounded w-3/4 mx-auto animate-pulse"></div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {[...Array(7)].map((_, i) => ( // Increased for more fields
+            {[...Array(8)].map((_, i) => ( // Increased for more fields
                  <div key={i} className="space-y-2">
                     <div className="h-6 bg-muted rounded w-1/4 animate-pulse"></div>
                     <div className="h-11 bg-muted rounded w-full animate-pulse"></div>
@@ -272,7 +280,7 @@ export default function RegisterHotelPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-8">
               <div>
                 <Label htmlFor="hotelName" className="text-base font-semibold flex items-center">
                   <Building size={18} className="mr-2 text-primary" /> Hotel Name
@@ -378,6 +386,25 @@ export default function RegisterHotelPage() {
                 </div>
               </Card>
 
+              <Card className="p-4 border-dashed border-primary/50">
+                <CardTitle className="text-lg mb-3 font-semibold flex items-center">
+                  <Sparkles size={20} className="mr-2 text-primary" /> Hotel Amenities
+                </CardTitle>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
+                  {ALL_AMENITIES.map(amenity => (
+                    <div key={amenity} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`amenity-${amenity}`}
+                        checked={selectedAmenities.includes(amenity)}
+                        onCheckedChange={(checked) => handleAmenityChange(amenity, checked)}
+                      />
+                      <Label htmlFor={`amenity-${amenity}`} className="font-normal text-sm">
+                        {amenity}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </Card>
 
               <div>
                 <Label htmlFor="description" className="text-base font-semibold flex items-center">
@@ -421,7 +448,7 @@ export default function RegisterHotelPage() {
                 />
               </div>
 
-              <CardFooter className="p-0 pt-4">
+              <CardFooter className="p-0 pt-6">
                 <Button type="submit" size="lg" className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg py-6">
                   <CheckCircle size={20} className="mr-2" /> Register My Hotel
                 </Button>
@@ -433,5 +460,3 @@ export default function RegisterHotelPage() {
     </div>
   );
 }
-
-    

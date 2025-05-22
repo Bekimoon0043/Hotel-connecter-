@@ -1,4 +1,12 @@
 
+export const ALL_AMENITIES = [
+  'Wifi', 'Pool', 'Parking', 'Air Conditioning', 'Restaurant', 'Gym', 'Spa', 
+  'Pet Friendly', 'Bar', 'TV', 'Kitchen', 'Washer', 'Dryer', 'Heating', 
+  'Beach Access', 'Fireplace', 'Lake View', 'Boat Tours', 'Desert Safari'
+] as const;
+
+export type Amenity = typeof ALL_AMENITIES[number];
+
 export interface RoomType {
   id: string;
   name: string;
@@ -24,7 +32,7 @@ export interface Hotel {
   rating: number; // 1-5
   pricePerNight: number; // indicative starting price
   description: string;
-  amenities: string[];
+  amenities: Amenity[];
   roomTypes: RoomType[];
 }
 

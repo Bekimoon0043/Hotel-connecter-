@@ -1,18 +1,29 @@
 
 "use client";
 
-import { useState } from 'react';
-import type { Hotel } from '@/lib/types'; // Import Hotel
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import type { Hotel } from '@/lib/types'; 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
-import { Building, MapPin, FileText, Mail, Globe, Home, DollarSign, Image as ImageIcon } from 'lucide-react';
+import { Building, MapPin, FileText, Mail, Globe, Home, DollarSign, Image as ImageIcon, ShieldAlert } from 'lucide-react';
+
+interface CurrentUser {
+  email: string;
+  fullName: string;
+  role: 'owner' | 'booker';
+}
 
 export default function RegisterHotelPage() {
   const { toast } = useToast();
+  const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+
   const [hotelName, setHotelName] = useState('');
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('');
@@ -24,12 +35,38 @@ export default function RegisterHotelPage() {
   const [hotelImageFile, setHotelImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
+  useEffect(() => {
+    const userStr = localStorage.getItem('currentUser');
+    if (userStr) {
+      try {
+        const user: CurrentUser = JSON.parse(userStr);
+        setCurrentUser(user);
+        if (user.role !== 'owner') {
+          toast({
+            title: "Access Denied",
+            description: "You must be a hotel owner to list a property.",
+            variant: "destructive",
+          });
+          router.push('/explore'); // Redirect non-owners
+        }
+      } catch (e) {
+        console.error("Error parsing currentUser", e);
+        localStorage.removeItem('currentUser');
+        router.push('/signin?role=owner&redirect=/register-hotel');
+      }
+    } else {
+      // Not logged in
+      router.push('/signin?role=owner&redirect=/register-hotel');
+    }
+    setIsLoadingAuth(false);
+  }, [router, toast]);
+
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setHotelImageFile(file);
-      setImagePreviewUrl(URL.createObjectURL(file)); // Create a temporary URL for preview
+      setImagePreviewUrl(URL.createObjectURL(file)); 
     } else {
       setHotelImageFile(null);
       setImagePreviewUrl(null);
@@ -38,6 +75,15 @@ export default function RegisterHotelPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!currentUser || currentUser.role !== 'owner') {
+      toast({
+        title: "Authentication Error",
+        description: "You are not authorized to perform this action.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const newHotelId = hotelName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
     const parsedPrice = parseFloat(pricePerNight);
@@ -51,7 +97,7 @@ export default function RegisterHotelPage() {
       return;
     }
 
-    let hotelMainImage = "https://placehold.co/800x600.png"; // Default image
+    let hotelMainImage = "https://placehold.co/800x600.png"; 
     if (hotelImageFile) {
       try {
         hotelMainImage = await new Promise((resolve, reject) => {
@@ -73,10 +119,8 @@ export default function RegisterHotelPage() {
           description: "Could not process the uploaded image. Using default image.",
           variant: "destructive",
         });
-        // Proceed with default image if conversion fails
       }
     }
-
 
     const newHotel: Hotel = {
       id: newHotelId,
@@ -91,7 +135,7 @@ export default function RegisterHotelPage() {
         "https://placehold.co/600x400.png",
         "https://placehold.co/600x400.png"
       ],
-      rating: Math.floor(Math.random() * 3) + 3, 
+      rating: Math.floor(Math.random() * 2) + 3.5, // 3.5 to 4.5
       pricePerNight: parsedPrice,
       description: description,
       amenities: ['Wifi', 'Parking', 'Air Conditioning', 'Restaurant', 'TV'], 
@@ -102,7 +146,7 @@ export default function RegisterHotelPage() {
           price: parsedPrice,
           beds: 1,
           maxGuests: 2,
-          image: hotelMainImage === "https://placehold.co/800x600.png" ? "https://placehold.co/600x400.png" : hotelMainImage, // Use uploaded image for room too if provided
+          image: hotelMainImage === "https://placehold.co/800x600.png" ? "https://placehold.co/600x400.png" : hotelMainImage,
           description: 'A comfortable standard room equipped with essential amenities.'
         }
       ]
@@ -119,7 +163,6 @@ export default function RegisterHotelPage() {
         description: `${hotelName} has been registered locally.`,
       });
 
-      // Reset form fields
       setHotelName('');
       setCity('');
       setCountry('');
@@ -133,7 +176,6 @@ export default function RegisterHotelPage() {
       const fileInput = document.getElementById('hotelImage') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
 
-
     } catch (error) {
       console.error("Error saving to localStorage:", error);
       toast({
@@ -143,6 +185,47 @@ export default function RegisterHotelPage() {
       });
     }
   };
+
+  if (isLoadingAuth) {
+    return (
+      <div className="flex items-center justify-center min-h-screen py-12 md:py-16 bg-muted/20">
+        <Card className="shadow-xl w-full max-w-2xl">
+          <CardHeader className="text-center">
+            <div className="mx-auto bg-primary text-primary-foreground rounded-full p-3 w-fit mb-4 animate-pulse">
+                <Home size={32} />
+            </div>
+            <div className="h-8 bg-muted rounded w-1/2 mx-auto animate-pulse mb-2"></div>
+            <div className="h-5 bg-muted rounded w-3/4 mx-auto animate-pulse"></div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {[...Array(5)].map((_, i) => (
+                 <div key={i} className="space-y-2">
+                    <div className="h-6 bg-muted rounded w-1/4 animate-pulse"></div>
+                    <div className="h-11 bg-muted rounded w-full animate-pulse"></div>
+                </div>
+            ))}
+             <CardFooter className="p-0 pt-4">
+                <div className="h-12 bg-muted rounded w-full animate-pulse"></div>
+              </CardFooter>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!currentUser || currentUser.role !== 'owner') {
+    // This state should ideally not be reached due to redirect, but as a fallback:
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen py-12 bg-muted/20">
+            <Card className="shadow-xl p-8 text-center">
+                <ShieldAlert size={48} className="mx-auto mb-4 text-destructive" />
+                <CardTitle className="text-2xl mb-2">Access Denied</CardTitle>
+                <CardDescription className="mb-4">You do not have permission to view this page.</CardDescription>
+                <Button onClick={() => router.push('/explore')}>Go to Explore</Button>
+            </Card>
+        </div>
+    );
+  }
 
   return (
     <div className="py-12 md:py-16 bg-muted/20">
@@ -250,6 +333,7 @@ export default function RegisterHotelPage() {
                 />
                 {imagePreviewUrl && (
                   <div className="mt-4">
+                    {/* Using img tag for Data URL preview */}
                     <img src={imagePreviewUrl} alt="Hotel preview" className="max-h-48 rounded-md shadow-md" />
                   </div>
                 )}
@@ -309,5 +393,3 @@ export default function RegisterHotelPage() {
     </div>
   );
 }
-
-    

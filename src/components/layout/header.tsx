@@ -1,15 +1,82 @@
 
+"use client";
+
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, BedDouble } from 'lucide-react';
+import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
+import { Menu, BedDouble, LogOut, UserCircle } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
+
+
+interface CurrentUser {
+  email: string;
+  fullName: string;
+  role: 'owner' | 'booker';
+}
 
 export default function Header() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { toast } = useToast();
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [isClient, setIsClient] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+
+  useEffect(() => {
+    setIsClient(true); // Component has mounted
+    const userStr = localStorage.getItem('currentUser');
+    if (userStr) {
+      try {
+        setCurrentUser(JSON.parse(userStr));
+      } catch (e) {
+        console.error("Error parsing currentUser from localStorage", e);
+        localStorage.removeItem('currentUser'); // Clear corrupted data
+      }
+    } else {
+      setCurrentUser(null);
+    }
+  }, [pathname]); // Re-check on pathname change, e.g., after login/logout navigation
+
+  const handleSignOut = () => {
+    localStorage.removeItem('currentUser');
+    setCurrentUser(null);
+    toast({
+      title: "Signed Out",
+      description: "You have been successfully signed out.",
+    });
+    router.push('/');
+    setIsSheetOpen(false); // Close mobile menu if open
+  };
+
   const navItems = [
     { label: 'Home', href: '/' },
-    { label: 'List your property', href: '/register-hotel' }, 
-    { label: 'Sign In', href: '/signin' }, 
+    { label: 'Explore Hotels', href: '/explore' },
+    { label: 'List your property', href: '/register-hotel' },
   ];
+
+  if (!isClient) {
+    // Render a loading state or a basic version of the header for SSR
+    return (
+      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 max-w-7xl items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <BedDouble className="h-7 w-7 text-primary" />
+            <span className="text-xl font-bold tracking-tight">Hotel Connector</span>
+          </Link>
+          <div className="h-8 w-24 bg-muted rounded animate-pulse md:hidden"></div>
+          <nav className="hidden md:flex items-center gap-2">
+            <div className="h-8 w-20 bg-muted rounded animate-pulse"></div>
+            <div className="h-8 w-24 bg-muted rounded animate-pulse"></div>
+            <div className="h-8 w-28 bg-muted rounded animate-pulse"></div>
+            <div className="h-10 w-24 bg-muted rounded animate-pulse"></div>
+          </nav>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -20,37 +87,86 @@ export default function Header() {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-2">
+        <nav className="hidden md:flex items-center gap-1">
           {navItems.map((item) => (
             <Button key={item.label} variant="ghost" asChild>
               <Link href={item.href}>{item.label}</Link>
             </Button>
           ))}
-          <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
-            <Link href="/signup">Sign Up</Link>
-          </Button>
+          {currentUser ? (
+            <>
+              <span className="text-sm text-muted-foreground mx-2 hidden lg:inline">Hi, {currentUser.fullName.split(' ')[0]}!</span>
+              <Button variant="ghost" onClick={handleSignOut}>
+                <LogOut size={18} className="mr-1.5" /> Sign Out
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" asChild>
+                <Link href="/signin">Sign In</Link>
+              </Button>
+              <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
+                <Link href="/signup">Sign Up</Link>
+              </Button>
+            </>
+          )}
         </nav>
 
         {/* Mobile Navigation */}
         <div className="md:hidden">
-          <Sheet>
+          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
                 <Menu className="h-6 w-6" />
                 <span className="sr-only">Toggle Menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-              <nav className="flex flex-col gap-4 mt-8">
-                {navItems.map((item) => (
-                  <Link key={item.label} href={item.href} className="block px-2 py-1 text-lg hover:underline">
-                    {item.label}
-                  </Link>
-                ))}
-                 <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90 w-full mt-4">
-                   <Link href="/signup">Sign Up</Link>
-                 </Button>
-              </nav>
+            <SheetContent side="right" className="w-[300px] sm:w-[320px] p-6">
+              <div className="flex flex-col h-full">
+                <nav className="flex flex-col gap-3 mt-8 flex-grow">
+                  {currentUser && (
+                    <div className="px-2 py-3 border-b mb-3">
+                        <div className="flex items-center gap-2">
+                            <UserCircle size={28} className="text-primary"/>
+                            <div>
+                                <p className="font-semibold">{currentUser.fullName}</p>
+                                <p className="text-xs text-muted-foreground">{currentUser.email}</p>
+                            </div>
+                        </div>
+                    </div>
+                  )}
+                  {navItems.map((item) => (
+                    <SheetClose asChild key={item.label}>
+                      <Link
+                        href={item.href}
+                        className="block px-2 py-2 text-lg hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
+                      >
+                        {item.label}
+                      </Link>
+                    </SheetClose>
+                  ))}
+                </nav>
+                <div className="mt-auto pt-4 border-t">
+                  {currentUser ? (
+                     <Button onClick={handleSignOut} className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                       <LogOut size={18} className="mr-2" /> Sign Out
+                     </Button>
+                  ) : (
+                    <div className="space-y-3">
+                      <SheetClose asChild>
+                        <Button asChild variant="outline" className="w-full">
+                          <Link href="/signin">Sign In</Link>
+                        </Button>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <Button asChild className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+                          <Link href="/signup">Sign Up</Link>
+                        </Button>
+                      </SheetClose>
+                    </div>
+                  )}
+                </div>
+              </div>
             </SheetContent>
           </Sheet>
         </div>

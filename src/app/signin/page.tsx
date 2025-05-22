@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,19 +11,29 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from "@/hooks/use-toast";
 import { LogIn, Mail, Lock } from 'lucide-react';
 
-// This interface should match the one in signup/page.tsx
 interface StoredUser {
   id: string;
   fullName: string;
   email: string;
-  passwordHash: string; // In a real app, this would be a securely hashed password.
+  passwordHash: string; 
 }
 
-export default function SignInPage() {
+interface CurrentUser {
+  email: string;
+  fullName: string;
+  role: 'owner' | 'booker';
+}
+
+function SignInForm() {
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
+  const roleParam = searchParams.get('role') as CurrentUser['role'] | null;
+  const redirectParam = searchParams.get('redirect');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,20 +61,29 @@ export default function SignInPage() {
         return;
       }
 
-      // **VERY IMPORTANT SECURITY NOTE:**
-      // Comparing plain text passwords is extremely insecure.
-      // This is a simplified approach for local demonstration ONLY.
-      // In a real application, use a secure password comparison method (e.g., bcrypt.compare) on the server.
-      if (user.passwordHash === password) {
+      if (user.passwordHash === password) { // Insecure: direct password comparison
+        const determinedRole = roleParam || 'booker';
+        const currentUserData: CurrentUser = {
+          email: user.email,
+          fullName: user.fullName,
+          role: determinedRole,
+        };
+        localStorage.setItem('currentUser', JSON.stringify(currentUserData));
+        
         toast({
           title: "Sign In Successful!",
-          description: `Welcome back, ${user.fullName}! (Locally signed in)`,
+          description: `Welcome back, ${user.fullName}! You are signed in as ${determinedRole}.`,
         });
-        // For local demo, we can store a simple flag or user email
-        localStorage.setItem('loggedInUserEmail', user.email); 
-        console.log('User Signed In (Locally):', user.email);
-        // Redirect to home page or dashboard after successful sign-in
-        router.push('/'); 
+        
+        console.log('User Signed In (Locally):', currentUserData);
+
+        if (redirectParam) {
+          router.push(redirectParam);
+        } else if (determinedRole === 'owner') {
+          router.push('/register-hotel');
+        } else {
+          router.push('/explore'); 
+        }
       } else {
         toast({
           title: "Sign In Failed",
@@ -82,6 +101,9 @@ export default function SignInPage() {
     }
   };
 
+  const signupLinkHref = `/signup${roleParam ? `?role=${roleParam}` : ''}${redirectParam ? `${roleParam ? '&' : '?'}redirect=${encodeURIComponent(redirectParam)}` : ''}`;
+
+
   return (
     <div className="py-12 md:py-16 bg-muted/20">
       <div className="container max-w-md mx-auto px-4 sm:px-6 lg:px-8">
@@ -93,6 +115,7 @@ export default function SignInPage() {
             <CardTitle className="text-3xl font-bold">Welcome Back!</CardTitle>
             <CardDescription className="text-muted-foreground">
               Sign in to access your Hotel Connector account.
+              {roleParam && ` You are signing in as ${roleParam === 'owner' ? 'a Hotel Owner' : 'a Guest'}.`}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -131,7 +154,7 @@ export default function SignInPage() {
                 </Button>
                 <p className="text-center text-sm text-muted-foreground">
                   Don't have an account?{' '}
-                  <Link href="/signup" className="font-medium text-primary hover:underline">
+                  <Link href={signupLinkHref} className="font-medium text-primary hover:underline">
                     Sign Up
                   </Link>
                 </p>
@@ -141,5 +164,15 @@ export default function SignInPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+
+export default function SignInPage() {
+  return (
+    // Suspense is required by Next.js when using useSearchParams in a page.
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignInForm />
+    </Suspense>
   );
 }

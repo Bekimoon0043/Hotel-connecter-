@@ -1,8 +1,9 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,12 +18,24 @@ interface StoredUser {
   passwordHash: string; // In a real app, this would be a securely hashed password.
 }
 
-export default function SignUpPage() {
+interface CurrentUser {
+  email: string;
+  fullName: string;
+  role: 'owner' | 'booker';
+}
+
+function SignUpForm() {
   const { toast } = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  const roleParam = searchParams.get('role') as CurrentUser['role'] | null;
+  const redirectParam = searchParams.get('redirect');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,14 +47,19 @@ export default function SignUpPage() {
       });
       return;
     }
+    if (password.length < 8) {
+         toast({
+            title: "Password Too Short",
+            description: "Password must be at least 8 characters long.",
+            variant: "destructive",
+        });
+        return;
+    }
 
-    // **VERY IMPORTANT SECURITY NOTE:**
-    // Storing plain text or easily reversible passwords in localStorage is extremely insecure
-    // and should NEVER be done in a production application.
-    // This is a simplified approach for local demonstration ONLY.
-    // In a real application, passwords should be securely hashed on a server.
+
+    const determinedRole = roleParam || 'booker';
     const newUser: StoredUser = {
-      id: Date.now().toString(), // Simple unique ID for local demo
+      id: Date.now().toString(), 
       fullName,
       email,
       passwordHash: password, // Storing password directly for local demo ONLY. DO NOT DO THIS IN PRODUCTION.
@@ -51,7 +69,6 @@ export default function SignUpPage() {
       const existingUsersString = localStorage.getItem('registeredUsers');
       const existingUsers: StoredUser[] = existingUsersString ? JSON.parse(existingUsersString) : [];
       
-      // Check if email already exists
       if (existingUsers.some(user => user.email === email)) {
         toast({
           title: "Registration Failed",
@@ -64,17 +81,28 @@ export default function SignUpPage() {
       existingUsers.push(newUser);
       localStorage.setItem('registeredUsers', JSON.stringify(existingUsers));
 
-      console.log('New User Registered (Locally):', { fullName, email }); // Don't log password
+      // Also set as current user for immediate sign-in effect
+      const currentUserData: CurrentUser = {
+        email: newUser.email,
+        fullName: newUser.fullName,
+        role: determinedRole,
+      };
+      localStorage.setItem('currentUser', JSON.stringify(currentUserData));
+
+      console.log('New User Registered & Signed In (Locally):', currentUserData);
       toast({
         title: "Sign Up Successful!",
-        description: "Your account has been created locally. You can now sign in.",
+        description: `Your account as ${determinedRole} has been created and you are now signed in.`,
       });
 
-      // Reset form fields
-      setFullName('');
-      setEmail('');
-      setPassword('');
-      setConfirmPassword('');
+      if (redirectParam) {
+        router.push(redirectParam);
+      } else if (determinedRole === 'owner') {
+        router.push('/register-hotel');
+      } else {
+        router.push('/explore');
+      }
+
     } catch (error) {
       console.error("Error saving to localStorage:", error);
       toast({
@@ -84,6 +112,9 @@ export default function SignUpPage() {
       });
     }
   };
+
+  const signinLinkHref = `/signin${roleParam ? `?role=${roleParam}` : ''}${redirectParam ? `${roleParam ? '&' : '?'}redirect=${encodeURIComponent(redirectParam)}` : ''}`;
+
 
   return (
     <div className="py-12 md:py-16 bg-muted/20">
@@ -95,7 +126,8 @@ export default function SignUpPage() {
             </div>
             <CardTitle className="text-3xl font-bold">Create Your Account</CardTitle>
             <CardDescription className="text-muted-foreground">
-              Join Hotel Connector to find and book your perfect stay.
+              Join Hotel Connector.
+              {roleParam && ` You are signing up as ${roleParam === 'owner' ? 'a Hotel Owner' : 'a Guest'}.`}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -137,7 +169,7 @@ export default function SignUpPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Choose a strong password"
+                  placeholder="Choose a strong password (min. 8 characters)"
                   required
                   minLength={8}
                   className="mt-1 h-11"
@@ -163,7 +195,7 @@ export default function SignUpPage() {
                 </Button>
                 <p className="text-center text-sm text-muted-foreground">
                   Already have an account?{' '}
-                  <Link href="/signin" className="font-medium text-primary hover:underline">
+                  <Link href={signinLinkHref} className="font-medium text-primary hover:underline">
                     Sign In
                   </Link>
                 </p>
@@ -173,5 +205,14 @@ export default function SignUpPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    // Suspense is required by Next.js when using useSearchParams in a page.
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignUpForm />
+    </Suspense>
   );
 }

@@ -70,15 +70,8 @@ export default function LandingPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-var(--header-height,4rem)-var(--footer-height,4rem))] py-12 bg-gradient-to-br from-primary/10 via-background to-background">
       <div className="text-center mb-12 px-4">
-        <Image 
-            src="/luxury-hotel-logo.png" 
-            alt="Hotel Connector Logo" 
-            width={200} 
-            height={200} 
-            className="mx-auto mb-6 rounded-lg shadow-md"
-            priority
-        />
-        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3">
+        
+        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3 mt-8"> {/* Added mt-8 for spacing if needed */}
           Welcome to <span className="text-primary">Hotel Connector</span>
         </h1>
         <p className="text-lg md:text-xl text-foreground/80 max-w-2xl mx-auto">

@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
-import { Menu, BedDouble, LogOut, UserCircle, LayoutDashboard } from 'lucide-react';
+import { Menu, BedDouble, LogOut, UserCircle, LayoutDashboard, Building } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
 
@@ -56,7 +56,7 @@ export default function Header() {
     { label: 'Explore Hotels', href: '/explore' },
   ];
 
-  const ownerNavItem = { label: 'List your property', href: '/register-hotel' };
+  const ownerNavItem = { label: 'List your property', href: '/register-hotel', icon: <Building size={18} className="mr-1.5"/> };
   const ownerDashboardItem = { label: 'My Dashboard', href: '/dashboard/owner', icon: <LayoutDashboard size={18} className="mr-1.5"/> };
 
 
@@ -64,8 +64,12 @@ export default function Header() {
     let items = [...baseNavItems];
     if (currentUser?.role === 'owner') {
       items.push(ownerDashboardItem);
+      items.push(ownerNavItem); // Owners see "List your property"
+    } else if (!currentUser) {
+      // Not logged in, show "List your property" (page itself will handle auth check)
+      items.push(ownerNavItem);
     }
-    items.push(ownerNavItem); // Always show "List your property" - page itself handles auth
+    // If currentUser exists but role is 'booker', ownerNavItem is NOT added, effectively hiding it.
     return items;
   };
   
@@ -102,7 +106,7 @@ export default function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-1">
-          {navItems.filter(item => !(item.label === 'My Dashboard' && currentUser?.role !== 'owner')).map((item) => (
+          {navItems.map((item) => (
             <Button key={item.label} variant="ghost" asChild>
               <Link href={item.href}>{item.icon}{item.label}</Link>
             </Button>
@@ -148,7 +152,7 @@ export default function Header() {
                       </div>
                   </div>
                 )}
-                {navItems.filter(item => !(item.label === 'My Dashboard' && currentUser?.role !== 'owner')).map((item) => (
+                {navItems.map((item) => (
                   <SheetClose asChild key={item.label}>
                     <Link
                       href={item.href}

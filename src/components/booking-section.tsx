@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import type { Hotel, RoomType, Booking } from '@/lib/types';
+import type { Hotel, RoomType, Booking, CurrentUser } from '@/lib/types';
 import { format, differenceInDays, addDays } from 'date-fns';
 import { CalendarDays, Users, BedDouble, DollarSign, ShoppingCart, ShieldAlert } from 'lucide-react';
 import type { DateRange } from "react-day-picker";
@@ -19,17 +19,11 @@ interface BookingSectionProps {
   hotel: Hotel;
 }
 
-interface CurrentUser {
-  email: string;
-  fullName: string;
-  role: 'owner' | 'booker';
-}
-
 export default function BookingSection({ hotel }: BookingSectionProps) {
   const { toast } = useToast();
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [guests, setGuests] = useState(1);
-  const [selectedRoom, setSelectedRoom] = useState<RoomType | undefined>(hotel.roomTypes[0]);
+  const [selectedRoom, setSelectedRoom] = useState<RoomType | undefined>(undefined);
   const [totalPrice, setTotalPrice] = useState(0);
   const [isClient, setIsClient] = useState(false);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
@@ -40,6 +34,12 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
     const tomorrow = addDays(today, 1);
     setDateRange({ from: today, to: tomorrow });
 
+    // Set default selected room if available
+    if (hotel.roomTypes && hotel.roomTypes.length > 0) {
+      setSelectedRoom(hotel.roomTypes[0]);
+    }
+
+
     const userStr = localStorage.getItem('currentUser');
     if (userStr) {
       try {
@@ -48,18 +48,19 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
         console.error("Error parsing currentUser for booking:", e);
       }
     }
-  }, []);
+  }, [hotel.roomTypes]); // Add hotel.roomTypes to dependency array
 
   useEffect(() => {
     if (dateRange?.from && dateRange?.to && selectedRoom) {
       const nights = differenceInDays(dateRange.to, dateRange.from);
       if (nights > 0) {
-        setTotalPrice(nights * selectedRoom.price * guests);
+        setTotalPrice(nights * selectedRoom.price); // Price is per room, guests handled by room max capacity
       } else {
-        setTotalPrice(selectedRoom.price * guests); 
+         // For single day or invalid range, perhaps show price for 1 night or 0
+        setTotalPrice(selectedRoom.price);
       }
     } else if (selectedRoom) {
-      setTotalPrice(selectedRoom.price * guests); 
+      setTotalPrice(selectedRoom.price); 
     } else {
       setTotalPrice(0);
     }
@@ -73,6 +74,14 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
         variant: "destructive",
       });
       // Optionally, redirect to sign-in page: router.push('/signin?redirect=/hotel/' + hotel.id);
+      return;
+    }
+    if (currentUser.role === 'owner' || currentUser.role === 'admin') {
+      toast({
+        title: "Booking Restricted",
+        description: "Owners and admins cannot book hotels through this interface.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -94,11 +103,21 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
       return;
     }
 
+    if (guests > selectedRoom.maxGuests) {
+        toast({
+            title: "Too Many Guests",
+            description: `The selected room (${selectedRoom.name}) can accommodate a maximum of ${selectedRoom.maxGuests} guests.`,
+            variant: "destructive",
+        });
+        return;
+    }
+
+
     const newBooking: Booking = {
-      id: `booking-${Date.now()}`,
+      id: `booking-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       hotelId: hotel.id,
       hotelName: hotel.name,
-      hotelOwnerEmail: hotel.ownerEmail || "unknown@example.com", // Fallback if ownerEmail is somehow missing
+      hotelOwnerEmail: hotel.ownerEmail || "unknown@example.com", 
       roomId: selectedRoom.id,
       roomName: selectedRoom.name,
       checkIn: dateRange.from.toISOString(),
@@ -158,9 +177,15 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
           <DollarSign size={26} className="mr-2 text-primary" />
           Book Your Stay
         </CardTitle>
-        <p className="text-muted-foreground text-sm">
-            Starting from <span className="font-semibold text-lg text-primary">${hotel.pricePerNight}</span> / night
-        </p>
+        {hotel.roomTypes && hotel.roomTypes.length > 0 ? (
+             <p className="text-muted-foreground text-sm">
+                Starting from <span className="font-semibold text-lg text-primary">${hotel.pricePerNight}</span> / night
+            </p>
+        ): (
+             <p className="text-muted-foreground text-sm">
+                Room prices vary. Select options to see total.
+            </p>
+        )}
       </CardHeader>
       <CardContent className="space-y-6">
         <div>
@@ -206,7 +231,7 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
               id="guests-details"
               type="number"
               min="1"
-              max={selectedRoom?.maxGuests || 99} // Cap guests by room maxGuests
+              max={selectedRoom?.maxGuests || 99} 
               value={guests}
               onChange={(e) => {
                 const numGuests = parseInt(e.target.value, 10) || 1;
@@ -220,29 +245,34 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
 
         <div>
           <Label htmlFor="room-type-details" className="text-base font-semibold">Room Type</Label>
-          <Select
-            value={selectedRoom?.id}
-            onValueChange={(roomId) => {
-              const room = hotel.roomTypes.find(r => r.id === roomId);
-              setSelectedRoom(room);
-              // Reset guests if current guests exceed new room's max capacity
-              if (room && guests > room.maxGuests) {
-                setGuests(room.maxGuests);
-              }
-            }}
-          >
-            <SelectTrigger id="room-type-details" className="mt-1 h-11">
-              <BedDouble className="mr-2 h-5 w-5 text-muted-foreground inline-block" />
-              <SelectValue placeholder="Select a room type" />
-            </SelectTrigger>
-            <SelectContent>
-              {hotel.roomTypes.map(room => (
-                <SelectItem key={room.id} value={room.id}>
-                  {room.name} (${room.price}/night, Max: {room.maxGuests} guests)
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {hotel.roomTypes && hotel.roomTypes.length > 0 ? (
+            <Select
+                value={selectedRoom?.id}
+                onValueChange={(roomId) => {
+                const room = hotel.roomTypes.find(r => r.id === roomId);
+                setSelectedRoom(room);
+                if (room && guests > room.maxGuests) {
+                    setGuests(room.maxGuests);
+                } else if (room && guests < 1) {
+                    setGuests(1);
+                }
+                }}
+            >
+                <SelectTrigger id="room-type-details" className="mt-1 h-11">
+                <BedDouble className="mr-2 h-5 w-5 text-muted-foreground inline-block" />
+                <SelectValue placeholder="Select a room type" />
+                </SelectTrigger>
+                <SelectContent>
+                {hotel.roomTypes.map(room => (
+                    <SelectItem key={room.id} value={room.id}>
+                    {room.name} (${room.price}/night, Max: {room.maxGuests} guests)
+                    </SelectItem>
+                ))}
+                </SelectContent>
+            </Select>
+          ) : (
+            <p className="text-sm text-muted-foreground mt-1">No specific room types available for this hotel.</p>
+          )}
         </div>
       </CardContent>
       <CardFooter className="flex flex-col items-stretch gap-4 pt-6 border-t">
@@ -257,14 +287,27 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
              <ShieldAlert size={18} /> Please sign in to complete your booking.
           </div>
         )}
+        {(currentUser && (currentUser.role === 'owner' || currentUser.role === 'admin')) && (
+             <div className="text-sm text-yellow-600 flex items-center gap-2 p-2 border border-yellow-500/50 rounded-md bg-yellow-50">
+                <ShieldAlert size={18} /> Owners/Admins cannot make bookings.
+            </div>
+        )}
         <Button 
           onClick={handleBooking} 
           size="lg" 
           className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg py-6"
-          disabled={!dateRange?.from || !dateRange?.to || !selectedRoom || (differenceInDays(dateRange.to, dateRange.from) <=0) || !currentUser}
+          disabled={
+            !dateRange?.from || 
+            !dateRange?.to || 
+            !selectedRoom || 
+            (differenceInDays(dateRange.to, dateRange.from) <=0) || 
+            !currentUser ||
+            currentUser.role === 'owner' ||
+            currentUser.role === 'admin'
+          }
         >
           <ShoppingCart className="mr-2 h-5 w-5"/>
-          {currentUser ? 'Book Now' : 'Sign In to Book'}
+          {currentUser ? (currentUser.role === 'owner' || currentUser.role === 'admin' ? 'Booking N/A' : 'Book Now') : 'Sign In to Book'}
         </Button>
       </CardFooter>
     </Card>

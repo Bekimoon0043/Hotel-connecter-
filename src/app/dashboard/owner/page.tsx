@@ -3,19 +3,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Booking, Hotel } from '@/lib/types';
+import type { Booking, Hotel, CurrentUser } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ShieldAlert, Home, ListChecks, UserCircle, DollarSign, CalendarDays, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-
-interface CurrentUser {
-  email: string;
-  fullName: string;
-  role: 'owner' | 'booker';
-}
 
 export default function OwnerDashboardPage() {
   const router = useRouter();
@@ -32,24 +26,39 @@ export default function OwnerDashboardPage() {
       try {
         const user: CurrentUser = JSON.parse(userStr);
         setCurrentUser(user);
-        if (user.role !== 'owner') {
+        if (user.role !== 'owner' && user.role !== 'admin') { // Allow admin to view owner dashboard
           toast({
             title: "Access Denied",
-            description: "You must be a hotel owner to view this dashboard.",
+            description: "You must be a hotel owner or admin to view this dashboard.",
             variant: "destructive",
           });
           router.push('/explore');
         } else {
-          // Fetch bookings and hotels for this owner
+          // Fetch bookings and hotels for this owner (or all if admin, though this page focuses on owner's view)
           const allBookingsStr = localStorage.getItem('hotelBookings');
           const allBookings: Booking[] = allBookingsStr ? JSON.parse(allBookingsStr) : [];
-          const ownerBookings = allBookings.filter(b => b.hotelOwnerEmail === user.email);
-          setBookings(ownerBookings.sort((a,b) => new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime())); // Sort by most recent
-
+          
           const allHotelsStr = localStorage.getItem('registeredHotels');
           const allHotels: Hotel[] = allHotelsStr ? JSON.parse(allHotelsStr) : [];
-          const ownerHotels = allHotels.filter(h => h.ownerEmail === user.email);
-          setHotels(ownerHotels);
+
+          if (user.role === 'admin') { // Admin sees all hotels and bookings on their own dashboard
+            // This page is specific to 'owner', so admin might see limited or all data depending on design.
+            // For simplicity, let admin see data of a specific owner if they navigate here, or all if no owner context.
+            // However, the primary purpose here is the owner's view of *their* properties.
+            // An admin would use the /admin/dashboard for a global view.
+            // If an admin somehow lands here, let's show them all for now for dev, but ideally redirect.
+            // For a true owner dashboard, we filter by ownerEmail.
+             setBookings(allBookings.sort((a,b) => new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime()));
+             setHotels(allHotels);
+             // Consider if admin should be redirected to /admin/dashboard from here.
+             // toast({ title: "Admin View", description: "Viewing all data. For specific owner view, use owner login.", variant: "info"});
+          } else { // Owner role
+            const ownerBookings = allBookings.filter(b => b.hotelOwnerEmail === user.email);
+            setBookings(ownerBookings.sort((a,b) => new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime()));
+
+            const ownerHotels = allHotels.filter(h => h.ownerEmail === user.email);
+            setHotels(ownerHotels);
+          }
         }
       } catch (e) {
         console.error("Error processing owner dashboard data:", e);
@@ -85,7 +94,7 @@ export default function OwnerDashboardPage() {
     );
   }
 
-  if (!currentUser || currentUser.role !== 'owner') {
+  if (!currentUser || (currentUser.role !== 'owner' && currentUser.role !== 'admin')) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen py-12 bg-muted/20">
         <Card className="shadow-xl p-8 text-center">
@@ -119,7 +128,7 @@ export default function OwnerDashboardPage() {
                 <CardContent>
                     <div className="text-3xl font-bold">{totalBookings}</div>
                     <p className="text-xs text-muted-foreground">
-                        Across all your properties
+                        Across {currentUser.role === 'admin' ? 'all properties' : 'your properties'}
                     </p>
                 </CardContent>
             </Card>
@@ -153,7 +162,7 @@ export default function OwnerDashboardPage() {
           <CardHeader>
             <CardTitle className="text-2xl">Recent Bookings</CardTitle>
             <CardDescription>
-              Here are the latest bookings for your properties.
+              Here are the latest bookings for {currentUser.role === 'admin' ? 'all properties' : 'your properties'}.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -202,8 +211,7 @@ export default function OwnerDashboardPage() {
             ) : (
               <div className="text-center py-10">
                 <ListChecks size={48} className="mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">You have no bookings for your properties yet.</p>
-                <p className="text-sm text-muted-foreground mt-1">Once guests book your hotels, their reservations will appear here.</p>
+                <p className="text-muted-foreground">No bookings found.</p>
               </div>
             )}
           </CardContent>

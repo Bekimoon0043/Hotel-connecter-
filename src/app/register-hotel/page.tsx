@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Hotel, Amenity, RoomType } from '@/lib/types'; 
+import type { Hotel, Amenity, RoomType, CurrentUser } from '@/lib/types'; 
 import { ALL_AMENITIES } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,12 +13,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
 import { Building, MapPin, FileText, Mail, Globe, Home, DollarSign, Image as ImageIcon, ShieldAlert, CheckCircle, Sparkles, BedDouble, PlusCircle, MinusCircle, Users as UsersIcon, Bed } from 'lucide-react';
-
-interface CurrentUser {
-  email: string;
-  fullName: string;
-  role: 'owner' | 'booker';
-}
 
 interface RoomTypeFormData extends Partial<Omit<RoomType, 'id' | 'image'>> {
   id?: string; // Keep original ID if editing, generate if new
@@ -38,9 +32,9 @@ export default function RegisterHotelPage() {
   const [country, setCountry] = useState('');
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
-  const [contactEmail, setContactEmail] = useState('');
-  const [website, setWebsite] = useState('');
-  const [pricePerNight, setPricePerNight] = useState(''); // Indicative starting price
+  const [contactEmail, setContactEmail] = useState(''); // Optional contact for the hotel itself
+  const [website, setWebsite] = useState(''); // Optional hotel website
+  const [pricePerNight, setPricePerNight] = useState(''); // Indicative starting price, used if no rooms
   const [selectedAmenities, setSelectedAmenities] = useState<Amenity[]>([]);
 
   const [hotelImageFile1, setHotelImageFile1] = useState<File | null>(null);
@@ -60,10 +54,10 @@ export default function RegisterHotelPage() {
       try {
         const user: CurrentUser = JSON.parse(userStr);
         setCurrentUser(user);
-        if (user.role !== 'owner') {
+        if (user.role !== 'owner' && user.role !== 'admin') { // Allow admin to register too
           toast({
             title: "Access Denied",
-            description: "You must be a hotel owner to list a property.",
+            description: "You must be a hotel owner or admin to list a property.",
             variant: "destructive",
           });
           router.push('/explore'); 
@@ -153,14 +147,14 @@ export default function RegisterHotelPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!currentUser || currentUser.role !== 'owner') {
+    if (!currentUser || (currentUser.role !== 'owner' && currentUser.role !== 'admin')) {
       toast({ title: "Authentication Error", description: "You are not authorized to perform this action.", variant: "destructive" });
       return;
     }
 
     let hotelMainPrice = parseFloat(pricePerNight);
     if (isNaN(hotelMainPrice) || hotelMainPrice <=0) {
-        hotelMainPrice = 0; // Default if not specified or invalid, will be overridden by room prices
+        hotelMainPrice = 0; 
     }
 
     const hotelImages: string[] = [];
@@ -179,7 +173,6 @@ export default function RegisterHotelPage() {
 
     for (const roomData of roomTypesData) {
       if (!roomData.name || roomData.price === undefined || roomData.price <= 0) {
-        // Skip incomplete or invalid room entries, or handle as error
         toast({ title: "Incomplete Room Data", description: `Room "${roomData.name || 'Unnamed'}" is missing required fields (name, valid price). It will not be saved.`, variant: "warning" });
         continue;
       }
@@ -207,7 +200,6 @@ export default function RegisterHotelPage() {
     }
 
     if (finalRoomTypes.length === 0) {
-      // If no valid room types were added, create a default one if a main price was given
       if (hotelMainPrice > 0) {
         finalRoomTypes.push({
             id: `rt-default-${Date.now()}`,
@@ -225,9 +217,7 @@ export default function RegisterHotelPage() {
       }
     }
     
-    // Update hotel's main pricePerNight to the minimum room price if rooms are defined
     const displayPrice = minRoomPrice !== Infinity ? minRoomPrice : hotelMainPrice > 0 ? hotelMainPrice : 0;
-
 
     const newHotel: Hotel = {
       id: hotelName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now(),
@@ -235,8 +225,8 @@ export default function RegisterHotelPage() {
       ownerEmail: currentUser.email,
       location: { city, country, address },
       images: hotelImages,
-      rating: Math.floor(Math.random() * 3 + 20) / 10, // Random rating between 2.0 and 4.9
-      pricePerNight: displayPrice, // This is now the "starting from" price
+      rating: Math.floor(Math.random() * 20 + 30) / 10, // Random rating between 3.0 and 4.9
+      pricePerNight: displayPrice, 
       description: description,
       amenities: selectedAmenities, 
       roomTypes: finalRoomTypes,
@@ -254,7 +244,6 @@ export default function RegisterHotelPage() {
         action: ( <Button variant="outline" size="sm" onClick={() => router.push(`/hotel/${newHotel.id}`)}> View Property </Button> )
       });
 
-      // Reset form
       setHotelName(''); setCity(''); setCountry(''); setAddress(''); setDescription('');
       setContactEmail(''); setWebsite(''); setPricePerNight(''); setSelectedAmenities([]);
       setHotelImageFile1(null); setImagePreviewUrl1(null);
@@ -262,10 +251,12 @@ export default function RegisterHotelPage() {
       setHotelImageFile3(null); setImagePreviewUrl3(null);
       setRoomTypesData([{ key: `room-${Date.now()}`, name: '', price: undefined, beds: 1, maxGuests: 2, description: '', imageFile: null, imagePreview: null }]);
       
-      (document.getElementById('hotelImage1') as HTMLInputElement).value = '';
-      (document.getElementById('hotelImage2') as HTMLInputElement).value = '';
-      (document.getElementById('hotelImage3') as HTMLInputElement).value = '';
-      // Need to reset room file inputs too if they are part of the DOM directly, or rely on state change clearing them.
+      const imageInput1 = document.getElementById('hotelImage1') as HTMLInputElement | null;
+      if(imageInput1) imageInput1.value = '';
+      const imageInput2 = document.getElementById('hotelImage2') as HTMLInputElement | null;
+      if(imageInput2) imageInput2.value = '';
+      const imageInput3 = document.getElementById('hotelImage3') as HTMLInputElement | null;
+      if(imageInput3) imageInput3.value = '';
 
     } catch (error) {
       console.error("Error saving to localStorage:", error);
@@ -279,8 +270,43 @@ export default function RegisterHotelPage() {
     { file: hotelImageFile3, preview: imagePreviewUrl3, handler: (e: React.ChangeEvent<HTMLInputElement>) => handleHotelImageChange(e, 3), id: "hotelImage3", label: "Tertiary Image (e.g., Amenity/View)" },
   ];
 
-  if (isLoadingAuth) { /* ... loading skeleton ... */ }
-  if (!currentUser || currentUser.role !== 'owner') { /* ... access denied ... */ }
+  if (isLoadingAuth) {
+    return (
+        <div className="flex items-center justify-center min-h-screen py-12 bg-muted/20">
+            <Card className="shadow-xl w-full max-w-2xl">
+                <CardHeader className="text-center">
+                    <div className="mx-auto bg-primary text-primary-foreground rounded-full p-3 w-fit mb-4 animate-pulse">
+                        <Home size={32} />
+                    </div>
+                    <div className="h-8 bg-muted rounded w-1/2 mx-auto animate-pulse mb-2"></div>
+                    <div className="h-5 bg-muted rounded w-3/4 mx-auto animate-pulse"></div>
+                </CardHeader>
+                <CardContent className="space-y-6 p-6">
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="space-y-2">
+                            <div className="h-5 bg-muted rounded w-1/4 animate-pulse"></div>
+                            <div className="h-10 bg-muted rounded w-full animate-pulse"></div>
+                        </div>
+                    ))}
+                     <div className="h-12 bg-muted rounded w-full animate-pulse mt-8"></div>
+                </CardContent>
+            </Card>
+        </div>
+    );
+  }
+  
+  if (!currentUser || (currentUser.role !== 'owner' && currentUser.role !== 'admin')) {
+     return (
+      <div className="flex flex-col items-center justify-center min-h-screen py-12 bg-muted/20">
+        <Card className="shadow-xl p-8 text-center">
+          <ShieldAlert size={48} className="mx-auto mb-4 text-destructive" />
+          <CardTitle className="text-2xl mb-2">Access Denied</CardTitle>
+          <CardDescription className="mb-4">You do not have permission to list a property.</CardDescription>
+          <Button onClick={() => router.push('/explore')}>Go to Explore</Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="py-12 md:py-16 bg-muted/20">
@@ -320,7 +346,7 @@ export default function RegisterHotelPage() {
               {/* Indicative Price Per Night */}
               <div>
                 <Label htmlFor="pricePerNight" className="text-base font-semibold flex items-center"> <DollarSign size={18} className="mr-2 text-primary" /> Indicative Starting Price Per Night (USD) </Label>
-                <Input id="pricePerNight" type="number" value={pricePerNight} onChange={(e) => setPricePerNight(e.target.value)} placeholder="e.g., 150 (lowest room price will be used)" min="0" step="1" className="mt-1 h-11" />
+                <Input id="pricePerNight" type="number" value={pricePerNight} onChange={(e) => setPricePerNight(e.target.value)} placeholder="e.g., 150 (used if no rooms defined)" min="0" step="1" className="mt-1 h-11" />
                 <p className="text-xs text-muted-foreground mt-1">This is an indicative price. Actual prices are set per room type below. The lowest room price will be displayed as the hotel's starting price.</p>
               </div>
 
@@ -405,7 +431,7 @@ export default function RegisterHotelPage() {
               
               {/* Contact & Website (Optional) */}
               <div>
-                <Label htmlFor="contactEmail" className="text-base font-semibold flex items-center"> <Mail size={18} className="mr-2 text-primary" /> Contact Email (Optional) </Label>
+                <Label htmlFor="contactEmail" className="text-base font-semibold flex items-center"> <Mail size={18} className="mr-2 text-primary" /> Hotel Contact Email (Optional) </Label>
                 <Input id="contactEmail" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="e.g., contact@yourhotel.com" className="mt-1 h-11" />
               </div>
               <div>
@@ -425,5 +451,3 @@ export default function RegisterHotelPage() {
     </div>
   );
 }
-
-    

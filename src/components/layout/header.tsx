@@ -6,15 +6,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
-import { Menu, BedDouble, LogOut, UserCircle, LayoutDashboard, Building } from 'lucide-react';
+import { Menu, BedDouble, LogOut, UserCircle, LayoutDashboard, Building, ShieldCheck } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-
-
-interface CurrentUser {
-  email: string;
-  fullName: string;
-  role: 'owner' | 'booker';
-}
+import type { CurrentUser } from '@/lib/types'; // Import consolidated type
 
 export default function Header() {
   const router = useRouter();
@@ -23,7 +17,6 @@ export default function Header() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-
 
   useEffect(() => {
     setIsClient(true); 
@@ -58,23 +51,28 @@ export default function Header() {
 
   const ownerNavItem = { label: 'List your property', href: '/register-hotel', icon: <Building size={18} className="mr-1.5"/> };
   const ownerDashboardItem = { label: 'My Dashboard', href: '/dashboard/owner', icon: <LayoutDashboard size={18} className="mr-1.5"/> };
-
+  const adminDashboardItem = { label: 'Admin Panel', href: '/admin/dashboard', icon: <ShieldCheck size={18} className="mr-1.5"/> };
 
   const getNavItems = () => {
     let items = [...baseNavItems];
-    if (currentUser?.role === 'owner') {
+    if (currentUser?.role === 'admin') {
+      items.push(adminDashboardItem);
+      // Admins can also see owner items if desired, or have a completely separate view.
+      // For now, let's assume admin also gets owner links for convenience in local dev.
       items.push(ownerDashboardItem);
-      items.push(ownerNavItem); // Owners see "List your property"
+      items.push(ownerNavItem);
+    } else if (currentUser?.role === 'owner') {
+      items.push(ownerDashboardItem);
+      items.push(ownerNavItem); 
     } else if (!currentUser) {
       // Not logged in, show "List your property" (page itself will handle auth check)
       items.push(ownerNavItem);
     }
-    // If currentUser exists but role is 'booker', ownerNavItem is NOT added, effectively hiding it.
+    // If currentUser exists and role is 'booker', ownerNavItem is NOT added.
     return items;
   };
   
   const navItems = getNavItems();
-
 
   if (!isClient) {
     return (
@@ -113,7 +111,7 @@ export default function Header() {
           ))}
           {currentUser ? (
             <>
-              <span className="text-sm text-muted-foreground mx-2 hidden lg:inline">Hi, {currentUser.fullName.split(' ')[0]}!</span>
+              <span className="text-sm text-muted-foreground mx-2 hidden lg:inline">Hi, {currentUser.fullName.split(' ')[0]}! ({currentUser.role})</span>
               <Button variant="ghost" onClick={handleSignOut}>
                 <LogOut size={18} className="mr-1.5" /> Sign Out
               </Button>

@@ -20,7 +20,7 @@ export interface RoomType {
 export interface Hotel {
   id: string;
   name: string;
-  ownerEmail?: string; // Added for linking hotel to owner
+  ownerEmail?: string; 
   location: {
     city: string;
     country: string;
@@ -28,29 +28,44 @@ export interface Hotel {
     lat?: number;
     lng?: number;
   };
-  images: string[]; // Image URLs from API or placeholders
-  rating: number; // 1-5
-  pricePerNight: number; // indicative starting price
+  images: string[]; 
+  rating: number; 
+  pricePerNight: number; 
   description: string;
   amenities: Amenity[];
   roomTypes: RoomType[];
 }
 
 export interface Booking {
-  id: string; // Unique booking ID
+  id: string; 
   hotelId: string;
   hotelName: string;
   hotelOwnerEmail: string;
   roomId: string;
   roomName: string;
-  checkIn: string; // ISO date string
-  checkOut: string; // ISO date string
+  checkIn: string; 
+  checkOut: string; 
   guests: number;
   totalPrice: number;
   bookedByGuestName: string;
   bookedByGuestEmail: string;
-  bookingDate: string; // ISO date string
-  status: 'pending' | 'confirmed' | 'cancelled'; // Booking status
+  bookingDate: string; 
+  status: 'pending' | 'confirmed' | 'cancelled'; 
+}
+
+// Stored user in localStorage (for sign-up/sign-in)
+export interface StoredUser {
+  id: string;
+  fullName: string;
+  email: string;
+  passwordHash: string; // In a real app, this would be securely hashed.
+}
+
+// Current logged-in user session data
+export interface CurrentUser {
+  email: string;
+  fullName: string;
+  role: 'owner' | 'booker' | 'admin'; // Added 'admin' role
 }
 
 
@@ -82,6 +97,7 @@ const mockHotels: Hotel[] = [
     location: { city: "New York", country: "USA", address: "Fifth Avenue at Central Park South" },
     images: [
       "https://placehold.co/800x500.png", 
+      "https://placehold.co/600x350.png",
       "https://placehold.co/600x350.png"
     ],
     rating: 4.9,
@@ -101,7 +117,6 @@ const mockHotels: Hotel[] = [
     images: [
       "https://placehold.co/800x550.png", 
       "https://placehold.co/600x400.png", 
-      "https://placehold.co/600x400.png", 
       "https://placehold.co/600x400.png"
     ],
     rating: 4.7,
@@ -118,7 +133,7 @@ const mockHotels: Hotel[] = [
     name: "Lakeview Mountain Lodge",
     ownerEmail: "owner3@example.com",
     location: { city: "Banff", country: "Canada", address: "123 Mountain View Road" },
-    images: ["https://placehold.co/700x500.png"],
+    images: ["https://placehold.co/700x500.png", "https://placehold.co/600x400.png", "https://placehold.co/600x400.png"],
     rating: 4.5,
     pricePerNight: 300,
     description: "Cozy lodge nestled in the Canadian Rockies, offering stunning lake and mountain views. Features comfortable rooms, a rustic restaurant with a fireplace, and access to hiking trails and boat tours.",
@@ -135,6 +150,7 @@ const mockHotels: Hotel[] = [
     location: { city: "Santorini", country: "Greece", address: "Oia Main Street" },
     images: [
       "https://placehold.co/800x600.png",
+      "https://placehold.co/600x400.png",
       "https://placehold.co/600x400.png"
     ],
     rating: 4.6,

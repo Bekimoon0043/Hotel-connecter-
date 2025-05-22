@@ -10,19 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
 import { UserPlus, User, Mail, Lock } from 'lucide-react';
+import type { StoredUser, CurrentUser } from '@/lib/types'; // Import consolidated types
 
-interface StoredUser {
-  id: string;
-  fullName: string;
-  email: string;
-  passwordHash: string; // In a real app, this would be a securely hashed password.
-}
-
-interface CurrentUser {
-  email: string;
-  fullName: string;
-  role: 'owner' | 'booker';
-}
+const ADMIN_EMAIL = "admin@hotelconnector.com"; // Hardcoded admin email
 
 function SignUpForm() {
   const { toast } = useToast();
@@ -39,6 +29,16 @@ function SignUpForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+      toast({
+        title: "Registration Failed",
+        description: "This email address is reserved for administrative use.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (password !== confirmPassword) {
       toast({
         title: "Password Mismatch",
@@ -56,8 +56,9 @@ function SignUpForm() {
         return;
     }
 
-
-    const determinedRole = roleParam || 'booker';
+    // Determine role: default to 'booker', or use roleParam if provided (but not 'admin')
+    const determinedRole: CurrentUser['role'] = (roleParam && roleParam !== 'admin') ? roleParam : 'booker';
+    
     const newUser: StoredUser = {
       id: Date.now().toString(), 
       fullName,
@@ -98,7 +99,7 @@ function SignUpForm() {
       if (redirectParam) {
         router.push(redirectParam);
       } else if (determinedRole === 'owner') {
-        router.push('/register-hotel');
+        router.push('/dashboard/owner'); // Or /register-hotel
       } else {
         router.push('/explore');
       }
@@ -127,7 +128,7 @@ function SignUpForm() {
             <CardTitle className="text-3xl font-bold">Create Your Account</CardTitle>
             <CardDescription className="text-muted-foreground">
               Join Hotel Connector.
-              {roleParam && ` You are signing up as ${roleParam === 'owner' ? 'a Hotel Owner' : 'a Guest'}.`}
+              {roleParam && roleParam !== 'admin' && ` You are signing up as ${roleParam === 'owner' ? 'a Hotel Owner' : 'a Guest'}.`}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -210,7 +211,6 @@ function SignUpForm() {
 
 export default function SignUpPage() {
   return (
-    // Suspense is required by Next.js when using useSearchParams in a page.
     <Suspense fallback={<div>Loading...</div>}>
       <SignUpForm />
     </Suspense>

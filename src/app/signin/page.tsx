@@ -10,19 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
 import { LogIn, Mail, Lock } from 'lucide-react';
+import type { StoredUser, CurrentUser } from '@/lib/types'; // Import consolidated types
 
-interface StoredUser {
-  id: string;
-  fullName: string;
-  email: string;
-  passwordHash: string; 
-}
-
-interface CurrentUser {
-  email: string;
-  fullName: string;
-  role: 'owner' | 'booker';
-}
+const ADMIN_EMAIL = "admin@hotelconnector.com"; // Hardcoded admin email
 
 function SignInForm() {
   const { toast } = useToast();
@@ -61,8 +51,20 @@ function SignInForm() {
         return;
       }
 
-      if (user.passwordHash === password) { // Insecure: direct password comparison
-        const determinedRole = roleParam || 'booker';
+      // Insecure: direct password comparison - FOR DEMO ONLY
+      if (user.passwordHash === password) { 
+        let determinedRole: CurrentUser['role'] = 'booker'; // Default role
+
+        if (email === ADMIN_EMAIL) {
+          determinedRole = 'admin';
+        } else if (roleParam) {
+          determinedRole = roleParam;
+        }
+        // Note: If a user signs up as 'owner' via ?role=owner, and then signs in without ?role=owner,
+        // they might default to 'booker' here unless we store their intended role during signup.
+        // For simplicity now, roleParam during sign-in can override or set the role for the session.
+        // If an admin signs in, their role is always 'admin'.
+
         const currentUserData: CurrentUser = {
           email: user.email,
           fullName: user.fullName,
@@ -75,12 +77,12 @@ function SignInForm() {
           description: `Welcome back, ${user.fullName}! You are signed in as ${determinedRole}.`,
         });
         
-        console.log('User Signed In (Locally):', currentUserData);
-
         if (redirectParam) {
           router.push(redirectParam);
+        } else if (determinedRole === 'admin') {
+          router.push('/admin/dashboard');
         } else if (determinedRole === 'owner') {
-          router.push('/register-hotel');
+          router.push('/dashboard/owner'); // Or /register-hotel
         } else {
           router.push('/explore'); 
         }
@@ -115,7 +117,7 @@ function SignInForm() {
             <CardTitle className="text-3xl font-bold">Welcome Back!</CardTitle>
             <CardDescription className="text-muted-foreground">
               Sign in to access your Hotel Connector account.
-              {roleParam && ` You are signing in as ${roleParam === 'owner' ? 'a Hotel Owner' : 'a Guest'}.`}
+              {roleParam && ` You are signing in as ${roleParam === 'owner' ? 'a Hotel Owner' : (roleParam === 'admin' ? 'an Administrator' : 'a Guest')}.`}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -170,7 +172,6 @@ function SignInForm() {
 
 export default function SignInPage() {
   return (
-    // Suspense is required by Next.js when using useSearchParams in a page.
     <Suspense fallback={<div>Loading...</div>}>
       <SignInForm />
     </Suspense>

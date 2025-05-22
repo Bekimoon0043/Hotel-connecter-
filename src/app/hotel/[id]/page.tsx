@@ -1,20 +1,19 @@
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { getHotelById, type Hotel } from '@/lib/types';
+import { getHotelById, getAllHotels, type Hotel } from '@/lib/types';
 import StarRating from '@/components/star-rating';
 import BookingSection from '@/components/booking-section';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { MapPin, CheckCircle, Wifi, Utensils, ParkingCircle, Droplet, Wind, Tv, Info } from 'lucide-react'; // Added Info for description
+import { MapPin, CheckCircle, Wifi, Utensils, ParkingCircle, Droplet, Wind, Tv, Info, BedDouble } from 'lucide-react';
 
 export const dynamic = 'force-static'; // Or 'auto' if data fetching logic changes
 export const revalidate = 3600; // Revalidate every hour if data is static but can change
 
 export async function generateStaticParams() {
-  // In a real app, fetch all hotel IDs
-  // For now, using mockHotels
-  const { mockHotels } = await import('@/lib/types');
-  return mockHotels.map(hotel => ({ id: hotel.id }));
+  // Fetch all hotel IDs from the API
+  const hotels = await getAllHotels();
+  return hotels.map(hotel => ({ id: hotel.id }));
 }
 
 interface AmenityIconProps {
@@ -28,8 +27,8 @@ function AmenityIcon({ amenity, className = "h-5 w-5 text-primary" }: AmenityIco
     case 'pool': return <Droplet className={className} />;
     case 'parking': return <ParkingCircle className={className} />;
     case 'air conditioning': return <Wind className={className} />;
-    case 'restaurant': return <Utensils className={className} />; // Using Utensils for restaurant
-    case 'gym': return <CheckCircle className={className} />; // Placeholder
+    case 'restaurant': return <Utensils className={className} />;
+    case 'gym': return <CheckCircle className={className} />; // Placeholder - consider specific icons
     case 'pet friendly': return <CheckCircle className={className} />; // Placeholder
     case 'spa': return <CheckCircle className={className} />; // Placeholder
     case 'beach access': return <CheckCircle className={className} />; // Placeholder
@@ -45,7 +44,7 @@ function AmenityIcon({ amenity, className = "h-5 w-5 text-primary" }: AmenityIco
 
 
 export default async function HotelDetailsPage({ params }: { params: { id: string } }) {
-  const hotel = getHotelById(params.id);
+  const hotel = await getHotelById(params.id);
 
   if (!hotel) {
     notFound();
@@ -59,7 +58,7 @@ export default async function HotelDetailsPage({ params }: { params: { id: strin
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 rounded-xl overflow-hidden shadow-xl">
             <div className="md:col-span-2 h-[300px] md:h-[500px] relative">
               <Image
-                src={hotel.images[0]}
+                src={hotel.images[0] || "https://placehold.co/800x600.png"}
                 alt={`Main image of ${hotel.name}`}
                 layout="fill"
                 objectFit="cover"
@@ -69,9 +68,9 @@ export default async function HotelDetailsPage({ params }: { params: { id: strin
               />
             </div>
             {hotel.images.slice(1, 3).map((img, index) => (
-              <div key={index} className="h-[200px] md:h-[246px] relative"> {/* Adjusted height to fit better */}
+              <div key={index} className="h-[200px] md:h-[246px] relative">
                 <Image
-                  src={img}
+                  src={img || "https://placehold.co/600x400.png"}
                   alt={`Image ${index + 2} of ${hotel.name}`}
                   layout="fill"
                   objectFit="cover"
@@ -80,10 +79,20 @@ export default async function HotelDetailsPage({ params }: { params: { id: strin
                 />
               </div>
             ))}
-             {hotel.images.length < 3 && hotel.images.length > 1 && ( // Fill blank space if only 2 images
-              <div className="h-[200px] md:h-[246px] bg-muted flex items-center justify-center">
+             {hotel.images.length < 3 && hotel.images.length > 1 && ( 
+              <div className="h-[200px] md:h-[246px] bg-muted flex items-center justify-center rounded-lg">
                 <BedDouble className="h-12 w-12 text-muted-foreground" />
               </div>
+            )}
+             {hotel.images.length === 1 && ( // Fill both small slots if only 1 image total
+              <>
+                <div className="h-[200px] md:h-[246px] bg-muted flex items-center justify-center rounded-lg">
+                  <BedDouble className="h-12 w-12 text-muted-foreground" />
+                </div>
+                <div className="h-[200px] md:h-[246px] bg-muted flex items-center justify-center rounded-lg">
+                  <BedDouble className="h-12 w-12 text-muted-foreground" />
+                </div>
+              </>
             )}
           </div>
         </section>
@@ -135,7 +144,7 @@ export default async function HotelDetailsPage({ params }: { params: { id: strin
                 {hotel.roomTypes.map((room) => (
                   <div key={room.id} className="flex flex-col sm:flex-row gap-4 p-4 border rounded-lg hover:shadow-md transition-shadow">
                     <Image 
-                      src={room.image} 
+                      src={room.image || "https://placehold.co/600x400.png"} 
                       alt={room.name} 
                       width={200} 
                       height={150} 

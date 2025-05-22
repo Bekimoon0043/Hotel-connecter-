@@ -1,10 +1,14 @@
 import HotelSearchForm from '@/components/hotel-search-form';
 import HotelCard from '@/components/hotel-card';
-import { mockHotels } from '@/lib/types';
+import { getAllHotels, type Hotel } from '@/lib/types';
 import Image from 'next/image';
 
-export default function HomePage() {
-  const popularHotels = mockHotels.slice(0, 6); // Display up to 6 popular hotels
+export default async function HomePage() {
+  // Fetch popular hotels from the API
+  const allHotels = await getAllHotels();
+  // You might want a specific API endpoint for "popular" hotels
+  // For now, slicing the first 6 as before
+  const popularHotels = allHotels.slice(0, 6); 
 
   return (
     <>
@@ -49,7 +53,7 @@ export default function HomePage() {
               ))}
             </div>
           ) : (
-            <p className="text-center text-muted-foreground">No popular hotels to display at the moment.</p>
+            <p className="text-center text-muted-foreground">No popular hotels to display at the moment. Check back later!</p>
           )}
         </div>
       </section>

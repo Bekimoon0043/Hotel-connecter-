@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
-import { Building, MapPin, FileText, Mail, Globe, Home, DollarSign, Image as ImageIcon, ShieldAlert } from 'lucide-react';
+import { Building, MapPin, FileText, Mail, Globe, Home, DollarSign, Image as ImageIcon, ShieldAlert, CheckCircle } from 'lucide-react';
 
 interface CurrentUser {
   email: string;
@@ -29,11 +29,16 @@ export default function RegisterHotelPage() {
   const [country, setCountry] = useState('');
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
-  const [contactEmail, setContactEmail] = useState(''); // This can be different from owner's email
+  const [contactEmail, setContactEmail] = useState('');
   const [website, setWebsite] = useState('');
   const [pricePerNight, setPricePerNight] = useState('');
-  const [hotelImageFile, setHotelImageFile] = useState<File | null>(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+
+  const [hotelImageFile1, setHotelImageFile1] = useState<File | null>(null);
+  const [imagePreviewUrl1, setImagePreviewUrl1] = useState<string | null>(null);
+  const [hotelImageFile2, setHotelImageFile2] = useState<File | null>(null);
+  const [imagePreviewUrl2, setImagePreviewUrl2] = useState<string | null>(null);
+  const [hotelImageFile3, setHotelImageFile3] = useState<File | null>(null);
+  const [imagePreviewUrl3, setImagePreviewUrl3] = useState<string | null>(null);
 
   useEffect(() => {
     const userStr = localStorage.getItem('currentUser');
@@ -60,16 +65,35 @@ export default function RegisterHotelPage() {
     setIsLoadingAuth(false);
   }, [router, toast]);
 
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>, imageNumber: 1 | 2 | 3) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setHotelImageFile(file);
-      setImagePreviewUrl(URL.createObjectURL(file)); 
+      const setFile = imageNumber === 1 ? setHotelImageFile1 : imageNumber === 2 ? setHotelImageFile2 : setHotelImageFile3;
+      const setPreview = imageNumber === 1 ? setImagePreviewUrl1 : imageNumber === 2 ? setImagePreviewUrl2 : setImagePreviewUrl3;
+      
+      setFile(file);
+      setPreview(URL.createObjectURL(file));
     } else {
-      setHotelImageFile(null);
-      setImagePreviewUrl(null);
+      const setFile = imageNumber === 1 ? setHotelImageFile1 : imageNumber === 2 ? setHotelImageFile2 : setHotelImageFile3;
+      const setPreview = imageNumber === 1 ? setImagePreviewUrl1 : imageNumber === 2 ? setImagePreviewUrl2 : setImagePreviewUrl3;
+      setFile(null);
+      setPreview(null);
     }
+  };
+
+  const convertFileToDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result);
+        } else {
+          reject(new Error('Failed to read file as Data URL.'));
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -96,49 +120,40 @@ export default function RegisterHotelPage() {
       return;
     }
 
-    let hotelMainImage = "https://placehold.co/800x600.png"; 
-    if (hotelImageFile) {
-      try {
-        hotelMainImage = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            if (typeof reader.result === 'string') {
-              resolve(reader.result);
-            } else {
-              reject(new Error('Failed to read file as Data URL.'));
-            }
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(hotelImageFile);
-        });
-      } catch (error) {
-        console.error("Error converting image to Data URL:", error);
+    const hotelImages: string[] = [];
+    try {
+      hotelImages.push(hotelImageFile1 ? await convertFileToDataURL(hotelImageFile1) : "https://placehold.co/800x600.png");
+      hotelImages.push(hotelImageFile2 ? await convertFileToDataURL(hotelImageFile2) : "https://placehold.co/600x400.png");
+      hotelImages.push(hotelImageFile3 ? await convertFileToDataURL(hotelImageFile3) : "https://placehold.co/600x400.png");
+    } catch (error) {
+        console.error("Error converting image(s) to Data URL:", error);
         toast({
           title: "Image Upload Error",
-          description: "Could not process the uploaded image. Using default image.",
+          description: "Could not process one or more uploaded images. Using default images.",
           variant: "destructive",
         });
-      }
+        // Ensure hotelImages has 3 placeholders if an error occurs during conversion
+        while(hotelImages.length < 3) {
+            if(hotelImages.length === 0) hotelImages.push("https://placehold.co/800x600.png");
+            else hotelImages.push("https://placehold.co/600x400.png");
+        }
     }
+
 
     const newHotel: Hotel = {
       id: newHotelId,
       name: hotelName,
-      ownerEmail: currentUser.email, // Store owner's email
+      ownerEmail: currentUser.email,
       location: {
         city: city,
         country: country,
         address: address,
       },
-      images: [
-        hotelMainImage,
-        "https://placehold.co/600x400.png",
-        "https://placehold.co/600x400.png"
-      ],
-      rating: Math.floor(Math.random() * 2) + 3.5, // 3.5 to 4.5
+      images: hotelImages,
+      rating: Math.floor(Math.random() * 2) + 3.5, 
       pricePerNight: parsedPrice,
       description: description,
-      amenities: ['Wifi', 'Parking', 'Air Conditioning', 'Restaurant', 'TV'], 
+      amenities: ['Wifi', 'Parking', 'Air Conditioning', 'Restaurant', 'TV', 'Pool'], 
       roomTypes: [
         {
           id: `rt-${Date.now()}`,
@@ -146,7 +161,7 @@ export default function RegisterHotelPage() {
           price: parsedPrice,
           beds: 1,
           maxGuests: 2,
-          image: hotelMainImage === "https://placehold.co/800x600.png" ? "https://placehold.co/600x400.png" : hotelMainImage,
+          image: hotelImages[0] || "https://placehold.co/600x400.png",
           description: 'A comfortable standard room equipped with essential amenities.'
         }
       ]
@@ -161,8 +176,14 @@ export default function RegisterHotelPage() {
       toast({
         title: "Property Submitted!",
         description: `${hotelName} has been registered locally.`,
+        action: (
+            <Button variant="outline" size="sm" onClick={() => router.push(`/hotel/${newHotel.id}`)}>
+                View Property
+            </Button>
+        )
       });
 
+      // Reset form fields
       setHotelName('');
       setCity('');
       setCountry('');
@@ -171,10 +192,14 @@ export default function RegisterHotelPage() {
       setContactEmail('');
       setWebsite('');
       setPricePerNight('');
-      setHotelImageFile(null);
-      setImagePreviewUrl(null);
-      const fileInput = document.getElementById('hotelImage') as HTMLInputElement;
-      if (fileInput) fileInput.value = '';
+      setHotelImageFile1(null); setImagePreviewUrl1(null);
+      setHotelImageFile2(null); setImagePreviewUrl2(null);
+      setHotelImageFile3(null); setImagePreviewUrl3(null);
+      
+      // Reset file input fields visually
+      (document.getElementById('hotelImage1') as HTMLInputElement).value = '';
+      (document.getElementById('hotelImage2') as HTMLInputElement).value = '';
+      (document.getElementById('hotelImage3') as HTMLInputElement).value = '';
 
     } catch (error) {
       console.error("Error saving to localStorage:", error);
@@ -185,6 +210,13 @@ export default function RegisterHotelPage() {
       });
     }
   };
+  
+  const imageInputFields = [
+    { file: hotelImageFile1, preview: imagePreviewUrl1, handler: (e: React.ChangeEvent<HTMLInputElement>) => handleImageChange(e, 1), id: "hotelImage1", label: "Main Image (e.g., Exterior)" },
+    { file: hotelImageFile2, preview: imagePreviewUrl2, handler: (e: React.ChangeEvent<HTMLInputElement>) => handleImageChange(e, 2), id: "hotelImage2", label: "Secondary Image (e.g., Lobby/Room)" },
+    { file: hotelImageFile3, preview: imagePreviewUrl3, handler: (e: React.ChangeEvent<HTMLInputElement>) => handleImageChange(e, 3), id: "hotelImage3", label: "Tertiary Image (e.g., Amenity/View)" },
+  ];
+
 
   if (isLoadingAuth) {
     return (
@@ -198,7 +230,7 @@ export default function RegisterHotelPage() {
             <div className="h-5 bg-muted rounded w-3/4 mx-auto animate-pulse"></div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {[...Array(5)].map((_, i) => (
+            {[...Array(7)].map((_, i) => ( // Increased for more fields
                  <div key={i} className="space-y-2">
                     <div className="h-6 bg-muted rounded w-1/4 animate-pulse"></div>
                     <div className="h-11 bg-muted rounded w-full animate-pulse"></div>
@@ -319,23 +351,33 @@ export default function RegisterHotelPage() {
                 />
               </div>
 
-              <div>
-                <Label htmlFor="hotelImage" className="text-base font-semibold flex items-center">
-                  <ImageIcon size={18} className="mr-2 text-primary" /> Hotel Image (Optional)
-                </Label>
-                <Input
-                  id="hotelImage"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="mt-1 h-11 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-                />
-                {imagePreviewUrl && (
-                  <div className="mt-4">
-                    <img src={imagePreviewUrl} alt="Hotel preview" className="max-h-48 rounded-md shadow-md" />
-                  </div>
-                )}
-              </div>
+              <Card className="p-4 border-dashed border-primary/50">
+                <CardTitle className="text-lg mb-3 font-semibold flex items-center">
+                  <ImageIcon size={20} className="mr-2 text-primary" /> Hotel Images (Up to 3)
+                </CardTitle>
+                <div className="space-y-4">
+                  {imageInputFields.map((field, index) => (
+                    <div key={field.id}>
+                      <Label htmlFor={field.id} className="text-sm font-medium text-muted-foreground">
+                        {field.label}
+                      </Label>
+                      <Input
+                        id={field.id}
+                        type="file"
+                        accept="image/*"
+                        onChange={field.handler}
+                        className="mt-1 h-11 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                      />
+                      {field.preview && (
+                        <div className="mt-3">
+                          <img src={field.preview} alt={`Preview ${index + 1}`} className="max-h-36 rounded-md shadow-md object-contain" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
 
               <div>
                 <Label htmlFor="description" className="text-base font-semibold flex items-center">
@@ -381,7 +423,7 @@ export default function RegisterHotelPage() {
 
               <CardFooter className="p-0 pt-4">
                 <Button type="submit" size="lg" className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg py-6">
-                  Register My Hotel
+                  <CheckCircle size={20} className="mr-2" /> Register My Hotel
                 </Button>
               </CardFooter>
             </form>
@@ -391,3 +433,5 @@ export default function RegisterHotelPage() {
     </div>
   );
 }
+
+    

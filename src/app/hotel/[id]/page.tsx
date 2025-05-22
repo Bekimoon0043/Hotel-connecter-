@@ -9,8 +9,8 @@ import StarRating from '@/components/star-rating';
 import BookingSection from '@/components/booking-section';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { MapPin, CheckCircle, Wifi, Utensils, ParkingCircle, Droplet, Wind, Tv, Info, BedDouble } from 'lucide-react';
-import HotelDetailsLoading from './loading'; // Use the existing loading component
+import { MapPin, CheckCircle, Wifi, Utensils, ParkingCircle, Droplet, Wind, Tv, Info, BedDouble, ImageOff } from 'lucide-react';
+import HotelDetailsLoading from './loading'; 
 
 interface AmenityIconProps {
   amenity: string;
@@ -24,15 +24,15 @@ function AmenityIcon({ amenity, className = "h-5 w-5 text-primary" }: AmenityIco
     case 'parking': return <ParkingCircle className={className} />;
     case 'air conditioning': return <Wind className={className} />;
     case 'restaurant': return <Utensils className={className} />;
-    case 'gym': return <CheckCircle className={className} />; // Placeholder, consider a more specific icon like Dumbbell
-    case 'pet friendly': return <CheckCircle className={className} />; // Placeholder, consider PawPrint
-    case 'spa': return <CheckCircle className={className} />; // Placeholder, consider Sparkles or similar
-    case 'beach access': return <CheckCircle className={className} />; // Placeholder
-    case 'fireplace': return <CheckCircle className={className} />; // Placeholder, consider Flame
-    case 'bar': return <CheckCircle className={className} />; // Placeholder, consider GlassWater or Wine
-    case 'lake view': return <CheckCircle className={className} />; // Placeholder
-    case 'boat tours': return <CheckCircle className={className} />; // Placeholder
-    case 'desert safari': return <CheckCircle className={className} />; // Placeholder
+    case 'gym': return <CheckCircle className={className} />; 
+    case 'pet friendly': return <CheckCircle className={className} />; 
+    case 'spa': return <CheckCircle className={className} />; 
+    case 'beach access': return <CheckCircle className={className} />; 
+    case 'fireplace': return <CheckCircle className={className} />;
+    case 'bar': return <CheckCircle className={className} />; 
+    case 'lake view': return <CheckCircle className={className} />; 
+    case 'boat tours': return <CheckCircle className={className} />; 
+    case 'desert safari': return <CheckCircle className={className} />; 
     case 'tv': return <Tv className={className} />;
     default: return <CheckCircle className={className} />;
   }
@@ -42,14 +42,13 @@ function HotelDetailsContent() {
   const params = useParams();
   const id = params.id as string;
 
-  const [hotel, setHotel] = useState<Hotel | null | undefined>(undefined); // undefined for loading, null for not found
+  const [hotel, setHotel] = useState<Hotel | null | undefined>(undefined);
 
   useEffect(() => {
     if (!id) return;
 
     let foundHotel: Hotel | undefined = undefined;
 
-    // 1. Try to load from localStorage
     try {
       const storedHotelsString = localStorage.getItem('registeredHotels');
       if (storedHotelsString) {
@@ -60,29 +59,39 @@ function HotelDetailsContent() {
       console.error("Error reading registered hotels from localStorage:", error);
     }
 
-    // 2. If not found in localStorage, try to load from mock data (async)
     if (!foundHotel) {
       getMockHotelById(id).then(mockHotel => {
         if (mockHotel) {
           setHotel(mockHotel);
         } else {
-          setHotel(null); // Mark as not found
+          setHotel(null); 
         }
       }).catch(() => {
-        setHotel(null); // Error fetching, mark as not found
+        setHotel(null); 
       });
     } else {
       setHotel(foundHotel);
     }
   }, [id]);
 
-  if (hotel === undefined) { // Still loading
+  if (hotel === undefined) { 
     return <HotelDetailsLoading />;
   }
 
   if (!hotel) {
-    notFound(); // Triggers the not-found UI
+    notFound(); 
   }
+
+  // Ensure hotel.images is an array and has at least 3 elements (can be placeholders)
+  const hotelImages = hotel.images && hotel.images.length > 0 ? hotel.images : [
+    "https://placehold.co/800x600.png", 
+    "https://placehold.co/600x400.png", 
+    "https://placehold.co/600x400.png"
+  ];
+  while (hotelImages.length < 3) {
+    hotelImages.push("https://placehold.co/600x400.png");
+  }
+
 
   return (
     <div className="py-8 md:py-12 bg-muted/40">
@@ -90,44 +99,31 @@ function HotelDetailsContent() {
         {/* Image Gallery */}
         <section className="mb-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 rounded-xl overflow-hidden shadow-xl">
-            <div className="md:col-span-2 h-[300px] md:h-[500px] relative">
+            <div className="md:col-span-2 h-[300px] md:h-[500px] relative bg-muted">
               <Image
-                src={hotel.images[0] || "https://placehold.co/800x600.png"}
+                src={hotelImages[0]}
                 alt={`Main image of ${hotel.name}`}
                 layout="fill"
                 objectFit="cover"
                 priority
                 className="transition-transform duration-300 hover:scale-105"
                 data-ai-hint="hotel building exterior"
+                onError={(e) => e.currentTarget.src = "https://placehold.co/800x600.png"}
               />
             </div>
-            {hotel.images.slice(1, 3).map((img, index) => (
-              <div key={index} className="h-[200px] md:h-[246px] relative">
+            {hotelImages.slice(1, 3).map((imgSrc, index) => (
+              <div key={index} className="h-[200px] md:h-[246px] relative bg-muted">
                 <Image
-                  src={img || "https://placehold.co/600x400.png"}
+                  src={imgSrc}
                   alt={`Image ${index + 2} of ${hotel.name}`}
                   layout="fill"
                   objectFit="cover"
                   className="transition-transform duration-300 hover:scale-105"
                   data-ai-hint="hotel room interior"
+                  onError={(e) => e.currentTarget.src = "https://placehold.co/600x400.png"}
                 />
               </div>
             ))}
-             {hotel.images.length < 3 && hotel.images.length === 2 && ( 
-              <div className="h-[200px] md:h-[246px] bg-muted flex items-center justify-center rounded-lg">
-                <BedDouble className="h-12 w-12 text-muted-foreground" data-ai-hint="bedroom interior" />
-              </div>
-            )}
-             {hotel.images.length === 1 && ( 
-              <>
-                <div className="h-[200px] md:h-[246px] bg-muted flex items-center justify-center rounded-lg">
-                  <BedDouble className="h-12 w-12 text-muted-foreground" data-ai-hint="bedroom furniture" />
-                </div>
-                <div className="h-[200px] md:h-[246px] bg-muted flex items-center justify-center rounded-lg">
-                  <BedDouble className="h-12 w-12 text-muted-foreground" data-ai-hint="bed hotel" />
-                </div>
-              </>
-            )}
           </div>
         </section>
 
@@ -181,14 +177,17 @@ function HotelDetailsContent() {
               <CardContent className="space-y-6">
                 {hotel.roomTypes && hotel.roomTypes.length > 0 ? hotel.roomTypes.map((room) => (
                   <div key={room.id} className="flex flex-col sm:flex-row gap-4 p-4 border rounded-lg hover:shadow-md transition-shadow">
-                    <Image 
-                      src={room.image || "https://placehold.co/600x400.png"} 
-                      alt={room.name} 
-                      width={200} 
-                      height={150} 
-                      className="rounded-md object-cover w-full sm:w-48 h-40 sm:h-auto flex-shrink-0"
-                      data-ai-hint="hotel bedroom"
-                    />
+                    <div className="relative w-full sm:w-48 h-40 sm:h-auto flex-shrink-0 bg-muted rounded-md">
+                        <Image 
+                          src={room.image || "https://placehold.co/600x400.png"} 
+                          alt={room.name} 
+                          layout="fill"
+                          objectFit="cover" 
+                          className="rounded-md"
+                          data-ai-hint="hotel bedroom"
+                          onError={(e) => e.currentTarget.src = "https://placehold.co/600x400.png"}
+                        />
+                    </div>
                     <div className="flex-grow">
                       <h3 className="text-lg font-semibold text-primary">{room.name}</h3>
                       <p className="text-sm text-muted-foreground mb-1">Max guests: {room.maxGuests} · Beds: {room.beds}</p>
@@ -222,3 +221,5 @@ export default function HotelDetailsPage() {
     </Suspense>
   );
 }
+
+    

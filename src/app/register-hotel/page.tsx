@@ -2,14 +2,14 @@
 "use client";
 
 import { useState } from 'react';
-import type { Hotel, RoomType } from '@/lib/types'; // Import Hotel and RoomType
+import type { Hotel } from '@/lib/types'; // Import Hotel
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
-import { Building, MapPin, FileText, Mail, Globe, Home, DollarSign } from 'lucide-react';
+import { Building, MapPin, FileText, Mail, Globe, Home, DollarSign, Image as ImageIcon } from 'lucide-react';
 
 export default function RegisterHotelPage() {
   const { toast } = useToast();
@@ -18,12 +18,25 @@ export default function RegisterHotelPage() {
   const [country, setCountry] = useState('');
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
-  const [contactEmail, setContactEmail] = useState(''); // Kept for potential future use
-  const [website, setWebsite] = useState(''); // Kept for potential future use
+  const [contactEmail, setContactEmail] = useState('');
+  const [website, setWebsite] = useState('');
   const [pricePerNight, setPricePerNight] = useState('');
+  const [hotelImageFile, setHotelImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setHotelImageFile(file);
+      setImagePreviewUrl(URL.createObjectURL(file)); // Create a temporary URL for preview
+    } else {
+      setHotelImageFile(null);
+      setImagePreviewUrl(null);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const newHotelId = hotelName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
@@ -38,6 +51,33 @@ export default function RegisterHotelPage() {
       return;
     }
 
+    let hotelMainImage = "https://placehold.co/800x600.png"; // Default image
+    if (hotelImageFile) {
+      try {
+        hotelMainImage = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            if (typeof reader.result === 'string') {
+              resolve(reader.result);
+            } else {
+              reject(new Error('Failed to read file as Data URL.'));
+            }
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(hotelImageFile);
+        });
+      } catch (error) {
+        console.error("Error converting image to Data URL:", error);
+        toast({
+          title: "Image Upload Error",
+          description: "Could not process the uploaded image. Using default image.",
+          variant: "destructive",
+        });
+        // Proceed with default image if conversion fails
+      }
+    }
+
+
     const newHotel: Hotel = {
       id: newHotelId,
       name: hotelName,
@@ -47,22 +87,22 @@ export default function RegisterHotelPage() {
         address: address,
       },
       images: [
-        "https://placehold.co/800x600.png",
+        hotelMainImage,
         "https://placehold.co/600x400.png",
         "https://placehold.co/600x400.png"
-      ], // Default images
-      rating: Math.floor(Math.random() * 3) + 3, // Random rating between 3 and 5 for variety
+      ],
+      rating: Math.floor(Math.random() * 3) + 3, 
       pricePerNight: parsedPrice,
       description: description,
-      amenities: ['Wifi', 'Parking', 'Air Conditioning', 'Restaurant', 'TV'], // Default amenities
+      amenities: ['Wifi', 'Parking', 'Air Conditioning', 'Restaurant', 'TV'], 
       roomTypes: [
         {
           id: `rt-${Date.now()}`,
           name: 'Standard Room',
-          price: parsedPrice, // Room price matches hotel's base price
+          price: parsedPrice,
           beds: 1,
           maxGuests: 2,
-          image: 'https://placehold.co/600x400.png',
+          image: hotelMainImage === "https://placehold.co/800x600.png" ? "https://placehold.co/600x400.png" : hotelMainImage, // Use uploaded image for room too if provided
           description: 'A comfortable standard room equipped with essential amenities.'
         }
       ]
@@ -88,6 +128,12 @@ export default function RegisterHotelPage() {
       setContactEmail('');
       setWebsite('');
       setPricePerNight('');
+      setHotelImageFile(null);
+      setImagePreviewUrl(null);
+      const fileInput = document.getElementById('hotelImage') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+
+
     } catch (error) {
       console.error("Error saving to localStorage:", error);
       toast({
@@ -192,6 +238,24 @@ export default function RegisterHotelPage() {
               </div>
 
               <div>
+                <Label htmlFor="hotelImage" className="text-base font-semibold flex items-center">
+                  <ImageIcon size={18} className="mr-2 text-primary" /> Hotel Image (Optional)
+                </Label>
+                <Input
+                  id="hotelImage"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="mt-1 h-11 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                />
+                {imagePreviewUrl && (
+                  <div className="mt-4">
+                    <img src={imagePreviewUrl} alt="Hotel preview" className="max-h-48 rounded-md shadow-md" />
+                  </div>
+                )}
+              </div>
+
+              <div>
                 <Label htmlFor="description" className="text-base font-semibold flex items-center">
                   <FileText size={18} className="mr-2 text-primary" /> Description
                 </Label>
@@ -245,3 +309,5 @@ export default function RegisterHotelPage() {
     </div>
   );
 }
+
+    

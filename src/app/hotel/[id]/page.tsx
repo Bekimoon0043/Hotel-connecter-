@@ -203,6 +203,29 @@ function HotelDetailsContent() {
               </CardContent>
             </Card>
 
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-xl flex items-center"><MapPin size={22} className="mr-2 text-primary" />Location on Map</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {hotel.location.lat && hotel.location.lng ? (
+                  <div className="aspect-video w-full rounded-lg overflow-hidden border">
+                    <iframe
+                      width="100%"
+                      height="100%"
+                      loading="lazy"
+                      allowFullScreen
+                      src={`https://maps.google.com/maps?q=${hotel.location.lat},${hotel.location.lng}&z=15&output=embed`}
+                      title={`Map of ${hotel.name}`}
+                      style={{ border: 0 }}
+                    ></iframe>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">Map location not provided by the owner.</p>
+                )}
+              </CardContent>
+            </Card>
+
           </main>
 
           {/* Booking Section Sidebar */}

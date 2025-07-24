@@ -75,7 +75,7 @@ const mockHotels: Hotel[] = [
     id: "grand-hyatt-tokyo",
     name: "Grand Hyatt Tokyo",
     ownerEmail: "owner1@example.com",
-    location: { city: "Tokyo", country: "Japan", address: "6-10-3 Roppongi, Minato-Ku" },
+    location: { city: "Tokyo", country: "Japan", address: "6-10-3 Roppongi, Minato-Ku", lat: 35.6604, lng: 139.7292 },
     images: [
       "https://placehold.co/800x600.png", 
       "https://placehold.co/600x400.png", 
@@ -94,7 +94,7 @@ const mockHotels: Hotel[] = [
     id: "the-plaza-new-york",
     name: "The Plaza New York",
     ownerEmail: "owner2@example.com",
-    location: { city: "New York", country: "USA", address: "Fifth Avenue at Central Park South" },
+    location: { city: "New York", country: "USA", address: "Fifth Avenue at Central Park South", lat: 40.7644, lng: -73.9745 },
     images: [
       "https://placehold.co/800x500.png", 
       "https://placehold.co/600x350.png",
@@ -113,7 +113,7 @@ const mockHotels: Hotel[] = [
     id: "desert-mirage-resort",
     name: "Desert Mirage Resort",
     ownerEmail: "owner1@example.com",
-    location: { city: "Dubai", country: "UAE", address: "1 Sheikh Mohammed bin Rashid Blvd" },
+    location: { city: "Dubai", country: "UAE", address: "1 Sheikh Mohammed bin Rashid Blvd", lat: 25.1972, lng: 55.2744 },
     images: [
       "https://placehold.co/800x550.png", 
       "https://placehold.co/600x400.png", 
@@ -132,7 +132,7 @@ const mockHotels: Hotel[] = [
     id: "lakeview-mountain-lodge",
     name: "Lakeview Mountain Lodge",
     ownerEmail: "owner3@example.com",
-    location: { city: "Banff", country: "Canada", address: "123 Mountain View Road" },
+    location: { city: "Banff", country: "Canada", address: "123 Mountain View Road", lat: 51.1784, lng: -115.5708 },
     images: ["https://placehold.co/700x500.png", "https://placehold.co/600x400.png", "https://placehold.co/600x400.png"],
     rating: 4.5,
     pricePerNight: 300,
@@ -147,7 +147,7 @@ const mockHotels: Hotel[] = [
     id: "coastal-charm-inn",
     name: "Coastal Charm Inn",
     ownerEmail: "owner2@example.com",
-    location: { city: "Santorini", country: "Greece", address: "Oia Main Street" },
+    location: { city: "Santorini", country: "Greece", address: "Oia Main Street", lat: 36.4612, lng: 25.3756 },
     images: [
       "https://placehold.co/800x600.png",
       "https://placehold.co/600x400.png",
@@ -166,7 +166,7 @@ const mockHotels: Hotel[] = [
     id: "urban-oasis-hotel",
     name: "Urban Oasis Hotel",
     ownerEmail: "owner3@example.com",
-    location: { city: "Singapore", country: "Singapore", address: "10 Bayfront Avenue" },
+    location: { city: "Singapore", country: "Singapore", address: "10 Bayfront Avenue", lat: 1.2831, lng: 103.8603 },
     images: [
       "https://placehold.co/750x550.png",
       "https://placehold.co/600x400.png",

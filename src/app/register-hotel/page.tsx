@@ -31,6 +31,8 @@ export default function RegisterHotelPage() {
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('');
   const [address, setAddress] = useState('');
+  const [lat, setLat] = useState('');
+  const [lng, setLng] = useState('');
   const [description, setDescription] = useState('');
   const [contactEmail, setContactEmail] = useState(''); // Optional contact for the hotel itself
   const [website, setWebsite] = useState(''); // Optional hotel website
@@ -223,7 +225,13 @@ export default function RegisterHotelPage() {
       id: hotelName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now(),
       name: hotelName,
       ownerEmail: currentUser.email,
-      location: { city, country, address },
+      location: { 
+          city, 
+          country, 
+          address, 
+          lat: lat ? parseFloat(lat) : undefined, 
+          lng: lng ? parseFloat(lng) : undefined 
+      },
       images: hotelImages,
       rating: Math.floor(Math.random() * 20 + 30) / 10, // Random rating between 3.0 and 4.9
       pricePerNight: displayPrice, 
@@ -245,6 +253,7 @@ export default function RegisterHotelPage() {
       });
 
       setHotelName(''); setCity(''); setCountry(''); setAddress(''); setDescription('');
+      setLat(''); setLng('');
       setContactEmail(''); setWebsite(''); setPricePerNight(''); setSelectedAmenities([]);
       setHotelImageFile1(null); setImagePreviewUrl1(null);
       setHotelImageFile2(null); setImagePreviewUrl2(null);
@@ -341,6 +350,18 @@ export default function RegisterHotelPage() {
               <div>
                 <Label htmlFor="address" className="text-base font-semibold flex items-center"> <MapPin size={18} className="mr-2 text-primary" /> Full Address </Label>
                 <Input id="address" type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g., 123 Main Street, Suite 4B" required className="mt-1 h-11" />
+              </div>
+
+              {/* Latitude & Longitude */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label htmlFor="lat" className="text-base font-semibold flex items-center"> <MapPin size={18} className="mr-2 text-primary" /> Latitude (Optional) </Label>
+                  <Input id="lat" type="number" value={lat} onChange={(e) => setLat(e.target.value)} placeholder="e.g., 40.7128" step="any" className="mt-1 h-11" />
+                </div>
+                <div>
+                  <Label htmlFor="lng" className="text-base font-semibold flex items-center"> <MapPin size={18} className="mr-2 text-primary" /> Longitude (Optional) </Label>
+                  <Input id="lng" type="number" value={lng} onChange={(e) => setLng(e.target.value)} placeholder="e.g., -74.0060" step="any" className="mt-1 h-11" />
+                </div>
               </div>
               
               {/* Indicative Price Per Night */}

@@ -12,13 +12,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
-import { Building, MapPin, FileText, Mail, Globe, Home, DollarSign, Image as ImageIcon, ShieldAlert, CheckCircle, Sparkles, BedDouble, PlusCircle, MinusCircle, Users as UsersIcon, Bed } from 'lucide-react';
+import { Building, MapPin, FileText, Mail, Globe, Home, DollarSign, Image as ImageIcon, ShieldAlert, CheckCircle, Sparkles, BedDouble, PlusCircle, MinusCircle, Users as UsersIcon, Bed, Package } from 'lucide-react';
 
 interface RoomTypeFormData extends Partial<Omit<RoomType, 'id' | 'image'>> {
   id?: string; // Keep original ID if editing, generate if new
   imageFile?: File | null;
   imagePreview?: string | null;
   key: string; // For React list key
+  quantity?: number;
 }
 
 export default function RegisterHotelPage() {
@@ -47,7 +48,7 @@ export default function RegisterHotelPage() {
   const [imagePreviewUrl3, setImagePreviewUrl3] = useState<string | null>(null);
 
   const [roomTypesData, setRoomTypesData] = useState<RoomTypeFormData[]>([
-    { key: `room-${Date.now()}`, name: '', price: undefined, beds: 1, maxGuests: 2, description: '', imageFile: null, imagePreview: null }
+    { key: `room-${Date.now()}`, name: '', price: undefined, beds: 1, maxGuests: 2, quantity: 1, description: '', imageFile: null, imagePreview: null }
   ]);
 
   useEffect(() => {
@@ -98,7 +99,7 @@ export default function RegisterHotelPage() {
   };
 
   const addRoomTypeField = () => {
-    setRoomTypesData(prev => [...prev, { key: `room-${Date.now()}`, name: '', price: undefined, beds: 1, maxGuests: 2, description: '', imageFile: null, imagePreview: null }]);
+    setRoomTypesData(prev => [...prev, { key: `room-${Date.now()}`, name: '', price: undefined, beds: 1, maxGuests: 2, quantity: 1, description: '', imageFile: null, imagePreview: null }]);
   };
 
   const removeRoomTypeField = (index: number) => {
@@ -108,7 +109,7 @@ export default function RegisterHotelPage() {
   const handleRoomTypeChange = (index: number, field: keyof RoomTypeFormData, value: any) => {
     setRoomTypesData(prev => 
       prev.map((room, i) => 
-        i === index ? { ...room, [field]: field === 'price' || field === 'beds' || field === 'maxGuests' ? (value ? parseFloat(value) : undefined) : value } : room
+        i === index ? { ...room, [field]: (field === 'price' || field === 'beds' || field === 'maxGuests' || field === 'quantity') ? (value ? parseFloat(value) : undefined) : value } : room
       )
     );
   };
@@ -174,8 +175,8 @@ export default function RegisterHotelPage() {
     let minRoomPrice = Infinity;
 
     for (const roomData of roomTypesData) {
-      if (!roomData.name || roomData.price === undefined || roomData.price <= 0) {
-        toast({ title: "Incomplete Room Data", description: `Room "${roomData.name || 'Unnamed'}" is missing required fields (name, valid price). It will not be saved.`, variant: "warning" });
+      if (!roomData.name || roomData.price === undefined || roomData.price <= 0 || roomData.quantity === undefined || roomData.quantity <= 0) {
+        toast({ title: "Incomplete Room Data", description: `Room "${roomData.name || 'Unnamed'}" is missing required fields (name, valid price, valid quantity). It will not be saved.`, variant: "warning" });
         continue;
       }
       let roomImage = "https://placehold.co/600x400.png";
@@ -193,6 +194,7 @@ export default function RegisterHotelPage() {
         price: roomData.price,
         beds: roomData.beds || 1,
         maxGuests: roomData.maxGuests || 2,
+        quantity: roomData.quantity || 1,
         image: roomImage,
         description: roomData.description || `A comfortable ${roomData.name}.`
       });
@@ -209,6 +211,7 @@ export default function RegisterHotelPage() {
             price: hotelMainPrice,
             beds: 1,
             maxGuests: 2,
+            quantity: 1,
             image: hotelImages[0] || "https://placehold.co/600x400.png",
             description: 'A comfortable standard room equipped with essential amenities.'
         });
@@ -258,7 +261,7 @@ export default function RegisterHotelPage() {
       setHotelImageFile1(null); setImagePreviewUrl1(null);
       setHotelImageFile2(null); setImagePreviewUrl2(null);
       setHotelImageFile3(null); setImagePreviewUrl3(null);
-      setRoomTypesData([{ key: `room-${Date.now()}`, name: '', price: undefined, beds: 1, maxGuests: 2, description: '', imageFile: null, imagePreview: null }]);
+      setRoomTypesData([{ key: `room-${Date.now()}`, name: '', price: undefined, beds: 1, maxGuests: 2, quantity: 1, description: '', imageFile: null, imagePreview: null }]);
       
       const imageInput1 = document.getElementById('hotelImage1') as HTMLInputElement | null;
       if(imageInput1) imageInput1.value = '';
@@ -413,12 +416,18 @@ export default function RegisterHotelPage() {
                         <Label htmlFor={`roomName-${index}`} className="text-sm font-semibold flex items-center"> <BedDouble size={16} className="mr-1 text-primary/80" /> Room Name </Label>
                         <Input id={`roomName-${index}`} type="text" value={room.name || ''} onChange={(e) => handleRoomTypeChange(index, 'name', e.target.value)} placeholder="e.g., Deluxe King, Twin Suite" required className="mt-1 h-10" />
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <Label htmlFor={`roomPrice-${index}`} className="text-sm font-semibold flex items-center"> <DollarSign size={16} className="mr-1 text-primary/80" /> Price/Night </Label>
                             <Input id={`roomPrice-${index}`} type="number" value={room.price === undefined ? '' : room.price} onChange={(e) => handleRoomTypeChange(index, 'price', e.target.value)} placeholder="e.g., 200" required min="0" step="1" className="mt-1 h-10" />
                         </div>
                         <div>
+                            <Label htmlFor={`roomQuantity-${index}`} className="text-sm font-semibold flex items-center"> <Package size={16} className="mr-1 text-primary/80" /> Quantity </Label>
+                            <Input id={`roomQuantity-${index}`} type="number" value={room.quantity || 1} onChange={(e) => handleRoomTypeChange(index, 'quantity', e.target.value)} placeholder="e.g., 10" required min="1" className="mt-1 h-10" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                         <div>
                             <Label htmlFor={`roomBeds-${index}`} className="text-sm font-semibold flex items-center"> <Bed size={16} className="mr-1 text-primary/80" /> Beds </Label>
                             <Input id={`roomBeds-${index}`} type="number" value={room.beds || 1} onChange={(e) => handleRoomTypeChange(index, 'beds', e.target.value)} placeholder="e.g., 1" required min="1" className="mt-1 h-10" />
                         </div>

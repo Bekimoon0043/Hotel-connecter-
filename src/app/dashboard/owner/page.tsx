@@ -7,7 +7,7 @@ import type { Booking, Hotel, CurrentUser } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ShieldAlert, Home, ListChecks, UserCircle, DollarSign, CalendarDays, Users } from 'lucide-react';
+import { ShieldAlert, Home, ListChecks, DollarSign, CalendarDays, Users, Check, X, Phone } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -19,6 +19,7 @@ export default function OwnerDashboardPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [allBookings, setAllBookings] = useState<Booking[]>([]);
 
   useEffect(() => {
     const userStr = localStorage.getItem('currentUser');
@@ -26,7 +27,7 @@ export default function OwnerDashboardPage() {
       try {
         const user: CurrentUser = JSON.parse(userStr);
         setCurrentUser(user);
-        if (user.role !== 'owner' && user.role !== 'admin') { // Allow admin to view owner dashboard
+        if (user.role !== 'owner' && user.role !== 'admin') { 
           toast({
             title: "Access Denied",
             description: "You must be a hotel owner or admin to view this dashboard.",
@@ -34,31 +35,7 @@ export default function OwnerDashboardPage() {
           });
           router.push('/explore');
         } else {
-          // Fetch bookings and hotels for this owner (or all if admin, though this page focuses on owner's view)
-          const allBookingsStr = localStorage.getItem('hotelBookings');
-          const allBookings: Booking[] = allBookingsStr ? JSON.parse(allBookingsStr) : [];
-          
-          const allHotelsStr = localStorage.getItem('registeredHotels');
-          const allHotels: Hotel[] = allHotelsStr ? JSON.parse(allHotelsStr) : [];
-
-          if (user.role === 'admin') { // Admin sees all hotels and bookings on their own dashboard
-            // This page is specific to 'owner', so admin might see limited or all data depending on design.
-            // For simplicity, let admin see data of a specific owner if they navigate here, or all if no owner context.
-            // However, the primary purpose here is the owner's view of *their* properties.
-            // An admin would use the /admin/dashboard for a global view.
-            // If an admin somehow lands here, let's show them all for now for dev, but ideally redirect.
-            // For a true owner dashboard, we filter by ownerEmail.
-             setBookings(allBookings.sort((a,b) => new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime()));
-             setHotels(allHotels);
-             // Consider if admin should be redirected to /admin/dashboard from here.
-             // toast({ title: "Admin View", description: "Viewing all data. For specific owner view, use owner login.", variant: "info"});
-          } else { // Owner role
-            const ownerBookings = allBookings.filter(b => b.hotelOwnerEmail === user.email);
-            setBookings(ownerBookings.sort((a,b) => new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime()));
-
-            const ownerHotels = allHotels.filter(h => h.ownerEmail === user.email);
-            setHotels(ownerHotels);
-          }
+          loadData(user);
         }
       } catch (e) {
         console.error("Error processing owner dashboard data:", e);
@@ -70,8 +47,62 @@ export default function OwnerDashboardPage() {
       router.push('/signin?role=owner&redirect=/dashboard/owner');
     }
     setIsLoadingAuth(false);
-    setIsLoadingData(false);
   }, [router, toast]);
+  
+  const loadData = (user: CurrentUser) => {
+     setIsLoadingData(true);
+     const allBookingsStr = localStorage.getItem('hotelBookings');
+     const loadedBookings: Booking[] = allBookingsStr ? JSON.parse(allBookingsStr) : [];
+     setAllBookings(loadedBookings);
+
+     const allHotelsStr = localStorage.getItem('registeredHotels');
+     const allHotels: Hotel[] = allHotelsStr ? JSON.parse(allHotelsStr) : [];
+
+     if (user.role === 'admin') {
+         setBookings(loadedBookings.sort((a,b) => new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime()));
+         setHotels(allHotels);
+     } else { // Owner role
+         const ownerBookings = loadedBookings.filter(b => b.hotelOwnerEmail === user.email);
+         setBookings(ownerBookings.sort((a,b) => new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime()));
+
+         const ownerHotels = allHotels.filter(h => h.ownerEmail === user.email);
+         setHotels(ownerHotels);
+     }
+     setIsLoadingData(false);
+  }
+
+  const handleBookingStatusChange = (bookingId: string, newStatus: 'confirmed' | 'cancelled') => {
+    const updatedBookings = allBookings.map(b => {
+        if(b.id === bookingId) {
+            return {...b, status: newStatus};
+        }
+        return b;
+    });
+
+    try {
+        localStorage.setItem('hotelBookings', JSON.stringify(updatedBookings));
+        setAllBookings(updatedBookings); // update the master list
+        
+        // now re-filter the displayed list based on the updated master list
+        if(currentUser) {
+           if(currentUser.role === 'admin') {
+                setBookings(updatedBookings.sort((a,b) => new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime()));
+           } else {
+                const ownerBookings = updatedBookings.filter(b => b.hotelOwnerEmail === currentUser.email);
+                setBookings(ownerBookings.sort((a,b) => new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime()));
+           }
+        }
+
+        toast({
+            title: `Booking ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
+            description: `The booking has been successfully ${newStatus}.`,
+        });
+    } catch (error) {
+        console.error("Error updating booking status:", error);
+        toast({ title: "Update Error", description: "Could not update the booking status.", variant: "destructive" });
+    }
+  };
+
 
   if (isLoadingAuth || isLoadingData) {
     return (
@@ -108,7 +139,8 @@ export default function OwnerDashboardPage() {
   }
 
   const totalBookings = bookings.length;
-  const totalRevenue = bookings.reduce((sum, booking) => sum + booking.totalPrice, 0);
+  // Calculate revenue only from confirmed bookings
+  const totalRevenue = bookings.filter(b => b.status === 'confirmed').reduce((sum, booking) => sum + booking.totalPrice, 0);
 
 
   return (
@@ -128,19 +160,19 @@ export default function OwnerDashboardPage() {
                 <CardContent>
                     <div className="text-3xl font-bold">{totalBookings}</div>
                     <p className="text-xs text-muted-foreground">
-                        Across {currentUser.role === 'admin' ? 'all properties' : 'your properties'}
+                        {bookings.filter(b => b.status === 'pending').length} pending confirmation
                     </p>
                 </CardContent>
             </Card>
             <Card className="shadow-lg">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Revenue (Pending)</CardTitle>
+                    <CardTitle className="text-sm font-medium">Total Confirmed Revenue</CardTitle>
                     <DollarSign className="h-5 w-5 text-primary" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-3xl font-bold">${totalRevenue.toFixed(2)}</div>
                      <p className="text-xs text-muted-foreground">
-                        Based on current bookings
+                        Based on confirmed bookings
                     </p>
                 </CardContent>
             </Card>
@@ -171,23 +203,26 @@ export default function OwnerDashboardPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Hotel</TableHead>
-                      <TableHead>Room</TableHead>
+                      <TableHead>Hotel / Room</TableHead>
                       <TableHead>Guest</TableHead>
                       <TableHead>Dates</TableHead>
                       <TableHead className="text-center">Guests</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                       <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="text-center">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {bookings.map((booking) => (
                       <TableRow key={booking.id}>
-                        <TableCell className="font-medium">{booking.hotelName}</TableCell>
-                        <TableCell>{booking.roomName}</TableCell>
+                        <TableCell className="font-medium">
+                            <div>{booking.hotelName}</div>
+                            <div className="text-xs text-muted-foreground">{booking.roomName}</div>
+                        </TableCell>
                         <TableCell>
                             <div>{booking.bookedByGuestName}</div>
                             <div className="text-xs text-muted-foreground">{booking.bookedByGuestEmail}</div>
+                            <div className="text-xs text-muted-foreground flex items-center pt-1"><Phone size={12} className="mr-1" />{booking.guestPhoneNumber}</div>
                         </TableCell>
                         <TableCell>
                             {format(new Date(booking.checkIn), "MMM dd, yyyy")} - <br/>
@@ -196,12 +231,26 @@ export default function OwnerDashboardPage() {
                         <TableCell className="text-center">{booking.guests}</TableCell>
                         <TableCell className="text-right">${booking.totalPrice.toFixed(2)}</TableCell>
                         <TableCell className="text-center">
-                            <span className={`px-2 py-1 text-xs rounded-full ${
-                                booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                booking.status === 'confirmed' ? 'bg-green-100 text-green-700' :
-                                'bg-red-100 text-red-700'}`}>
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-full capitalize ${
+                                booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                                'bg-red-100 text-red-800'}`}>
                                 {booking.status}
                             </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                            {booking.status === 'pending' ? (
+                                <div className="flex gap-2 justify-center">
+                                    <Button size="sm" variant="outline" className="h-8 px-2 border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700" onClick={() => handleBookingStatusChange(booking.id, 'confirmed')}>
+                                        <Check size={16} />
+                                    </Button>
+                                    <Button size="sm" variant="outline" className="h-8 px-2 border-red-500 text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => handleBookingStatusChange(booking.id, 'cancelled')}>
+                                        <X size={16} />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <span className="text-xs text-muted-foreground">No actions</span>
+                            )}
                         </TableCell>
                       </TableRow>
                     ))}

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
@@ -21,8 +21,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import type { Hotel, RoomType, Booking, CurrentUser } from '@/lib/types';
-import { format, differenceInDays, addDays } from 'date-fns';
-import { CalendarDays, Users, BedDouble, DollarSign, ShoppingCart, ShieldAlert, CreditCard, Loader2 } from 'lucide-react';
+import { format, differenceInDays, addDays, eachDayOfInterval } from 'date-fns';
+import { CalendarDays, Users, BedDouble, DollarSign, ShoppingCart, ShieldAlert, CreditCard, Loader2, Phone } from 'lucide-react';
 import type { DateRange } from "react-day-picker";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from 'next/navigation';
@@ -43,6 +43,9 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
 
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [guestPhoneNumber, setGuestPhoneNumber] = useState('');
+
+  const [allBookings, setAllBookings] = useState<Booking[]>([]);
 
   useEffect(() => {
     setIsClient(true);
@@ -55,21 +58,26 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
       }
     }
     
-    // Initialize with today and tomorrow as default dates
+    // Load all bookings for availability check
+    const bookingsStr = localStorage.getItem('hotelBookings');
+    if(bookingsStr) {
+      setAllBookings(JSON.parse(bookingsStr));
+    }
+    
     const today = new Date();
     const tomorrow = addDays(today, 1);
     setDateRange({ from: today, to: tomorrow });
 
-    // Set default selected room if available
     if (hotel.roomTypes && hotel.roomTypes.length > 0) {
       setSelectedRoom(hotel.roomTypes[0]);
-    } else if (hotel.pricePerNight > 0) { // Fallback if no room types but hotel has a base price
+    } else if (hotel.pricePerNight > 0) {
         setSelectedRoom({
             id: `default-room-${hotel.id}`,
             name: "Standard Accommodation",
             price: hotel.pricePerNight,
             beds: 1,
             maxGuests: 2,
+            quantity: 1,
             image: hotel.images[0] || "https://placehold.co/600x400.png",
             description: "Standard room offering."
         });
@@ -77,13 +85,43 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
 
   }, [hotel.roomTypes, hotel.id, hotel.pricePerNight, hotel.images]);
 
+  const availableRooms = useMemo(() => {
+    if (!dateRange?.from || !dateRange?.to) return hotel.roomTypes || [];
+
+    const bookingInterval = eachDayOfInterval({
+        start: dateRange.from,
+        end: addDays(dateRange.to, -1) // Don't include checkout day for counting nights
+    });
+
+    return (hotel.roomTypes || []).map(room => {
+        const confirmedBookingsForRoom = allBookings.filter(
+            b => b.roomId === room.id && (b.status === 'confirmed' || b.status === 'pending')
+        );
+
+        let maxBookedOnAnyDay = 0;
+        bookingInterval.forEach(day => {
+            const bookingsOnThisDay = confirmedBookingsForRoom.filter(b => {
+                const checkInDate = new Date(b.checkIn);
+                const checkOutDate = new Date(b.checkOut);
+                return day >= checkInDate && day < checkOutDate;
+            }).length;
+            if (bookingsOnThisDay > maxBookedOnAnyDay) {
+                maxBookedOnAnyDay = bookingsOnThisDay;
+            }
+        });
+        
+        const availableCount = room.quantity - maxBookedOnAnyDay;
+        return { ...room, availableCount: availableCount > 0 ? availableCount : 0 };
+    });
+  }, [dateRange, allBookings, hotel.roomTypes]);
+
   useEffect(() => {
     if (dateRange?.from && dateRange?.to && selectedRoom) {
       const nights = differenceInDays(dateRange.to, dateRange.from);
       if (nights > 0) {
         setTotalPrice(nights * selectedRoom.price);
       } else {
-        setTotalPrice(selectedRoom.price); // Price for 1 night if range is same day or invalid
+        setTotalPrice(selectedRoom.price);
       }
     } else if (selectedRoom) {
       setTotalPrice(selectedRoom.price); 
@@ -137,33 +175,27 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
         });
         return;
     }
-    // All good, show payment dialog
+
+    const roomAvailability = availableRooms.find(r => r.id === selectedRoom.id);
+    if (!roomAvailability || roomAvailability.availableCount <= 0) {
+        toast({
+            title: "Room Not Available",
+            description: "The selected room type is fully booked for the chosen dates. Please select another room or different dates.",
+            variant: "destructive",
+        });
+        return;
+    }
+    
     setShowPaymentDialog(true);
   };
+  
+  const handleBookingRequest = () => {
+    if (!currentUser || !dateRange?.from || !dateRange?.to || !selectedRoom || !guestPhoneNumber) {
+        toast({ title: "Missing Information", description: "Please provide a phone number.", variant: "destructive"});
+        return;
+    }
 
-  const simulateTelebirrPayment = async (): Promise<boolean> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 2500));
-    // Simulate random success/failure
-    const isSuccess = Math.random() > 0.3; // 70% chance of success for demo
-    return isSuccess;
-  };
-
-  const handleConfirmAndPay = async () => {
-    if (!currentUser || !dateRange?.from || !dateRange?.to || !selectedRoom) return;
-
-    setIsProcessingPayment(true);
-
-    // SIMULATE Telebirr Payment
-    toast({
-        title: "Processing Payment...",
-        description: "Connecting to Telebirr. Please wait.",
-    });
-
-    const paymentSuccessful = await simulateTelebirrPayment();
-
-    if (paymentSuccessful) {
-      const newBooking: Booking = {
+    const newBooking: Booking = {
         id: `booking-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         hotelId: hotel.id,
         hotelName: hotel.name,
@@ -176,42 +208,38 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
         totalPrice: totalPrice,
         bookedByGuestName: currentUser.fullName,
         bookedByGuestEmail: currentUser.email,
+        guestPhoneNumber: guestPhoneNumber,
         bookingDate: new Date().toISOString(),
-        status: 'confirmed', // Payment successful, so booking is confirmed
-      };
-
-      try {
+        status: 'pending', 
+    };
+    
+    try {
         const existingBookingsString = localStorage.getItem('hotelBookings');
         const existingBookings: Booking[] = existingBookingsString ? JSON.parse(existingBookingsString) : [];
         existingBookings.push(newBooking);
         localStorage.setItem('hotelBookings', JSON.stringify(existingBookings));
-
+        
         toast({
-          title: "Booking Confirmed!",
-          description: `Payment successful. Your booking for ${selectedRoom.name} at ${hotel.name} is confirmed.`,
-          variant: "default"
+            title: "Booking Request Sent!",
+            description: `Your request for ${hotel.name} has been sent to the owner for confirmation.`,
+            variant: "default"
         });
-        console.log("New Booking Stored (Local):", newBooking);
-        // Optionally, redirect to a booking success page or user's bookings page
-        // router.push('/my-bookings'); 
-      } catch (error) {
-        console.error("Error saving booking to localStorage:", error);
+
+        // Update local state to reflect new booking for availability checks
+        setAllBookings(existingBookings);
+
+    } catch (error) {
+         console.error("Error saving booking to localStorage:", error);
         toast({
-          title: "Booking Save Error",
-          description: "Payment was successful, but could not save your booking. Please contact support.",
+          title: "Booking Request Error",
+          description: "Could not save your booking request. Please try again.",
           variant: "destructive",
         });
-      }
-    } else {
-      toast({
-        title: "Payment Failed",
-        description: "Telebirr payment was not successful. Please try again or use a different payment method.",
-        variant: "destructive",
-      });
     }
-    setIsProcessingPayment(false);
+
     setShowPaymentDialog(false);
-  };
+    setGuestPhoneNumber('');
+  }
   
   if (!isClient) {
     return (
@@ -232,6 +260,7 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
   }
 
   const nights = (dateRange?.from && dateRange?.to) ? differenceInDays(dateRange.to, dateRange.from) : 0;
+  const selectedRoomAvailability = availableRooms.find(r => r.id === selectedRoom?.id);
 
   return (
     <>
@@ -331,9 +360,9 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
                   <SelectValue placeholder="Select a room type" />
                   </SelectTrigger>
                   <SelectContent>
-                  {hotel.roomTypes.map(room => (
-                      <SelectItem key={room.id} value={room.id}>
-                      {room.name} (${room.price}/night, Max: {room.maxGuests} guests)
+                  {availableRooms.map(room => (
+                      <SelectItem key={room.id} value={room.id} disabled={room.availableCount <= 0}>
+                         {room.name} (${room.price}/night) - {room.availableCount > 0 ? `${room.availableCount} available` : 'Not available'}
                       </SelectItem>
                   ))}
                   </SelectContent>
@@ -341,7 +370,7 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
             ) : (
               selectedRoom ? (
                  <Input 
-                    value={`${selectedRoom.name} ($${selectedRoom.price}/night, Max: ${selectedRoom.maxGuests} guests)`} 
+                    value={`${selectedRoom.name} ($${selectedRoom.price}/night)`} 
                     className="mt-1 h-11 bg-muted" 
                     readOnly 
                     />
@@ -379,53 +408,50 @@ export default function BookingSection({ hotel }: BookingSectionProps) {
               (nights <=0) || 
               !currentUser ||
               currentUser.role === 'owner' ||
-              currentUser.role === 'admin'
+              currentUser.role === 'admin' ||
+              (selectedRoomAvailability?.availableCount ?? 0) <= 0
             }
           >
             <ShoppingCart className="mr-2 h-5 w-5"/>
-            {currentUser ? (currentUser.role === 'owner' || currentUser.role === 'admin' ? 'Booking N/A' : 'Book Now') : 'Sign In to Book'}
+            {(selectedRoomAvailability?.availableCount ?? 0) <= 0 ? 'Not Available' : 'Request to Book'}
           </Button>
         </CardFooter>
       </Card>
 
-      {showPaymentDialog && selectedRoom && dateRange?.from && dateRange?.to && (
-        <AlertDialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+      <AlertDialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center">
-                <CreditCard className="mr-2 text-primary" /> Confirm and Pay with Telebirr
+                <CreditCard className="mr-2 text-primary" /> Confirm Booking Request
               </AlertDialogTitle>
               <AlertDialogDescription>
-                You are about to book the <strong>{selectedRoom.name}</strong> at <strong>{hotel.name}</strong>
-                from <strong>{format(dateRange.from, "PP")}</strong> to <strong>{format(dateRange.to, "PP")}</strong> ({nights} night{nights !== 1 ? 's' : ''})
+                You are requesting to book the <strong>{selectedRoom?.name}</strong> at <strong>{hotel.name}</strong>
+                from <strong>{dateRange?.from ? format(dateRange.from, "PP") : ''}</strong> to <strong>{dateRange?.to ? format(dateRange.to, "PP") : ''}</strong> ({nights} night{nights !== 1 ? 's' : ''})
                 for <strong>{guests} guest{guests !== 1 ? 's' : ''}</strong>.
                 <br />
                 Total amount: <strong className="text-lg text-primary">${totalPrice.toFixed(2)}</strong>
                 <br /><br />
-                This is a <strong className="text-destructive">SIMULATED</strong> Telebirr payment. No real transaction will occur.
+                The hotel owner will confirm your booking. Please provide your phone number for contact.
               </AlertDialogDescription>
             </AlertDialogHeader>
+            <div className="space-y-2">
+                <Label htmlFor="phone-number">Phone Number</Label>
+                <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Input id="phone-number" type="tel" placeholder="e.g. 0912345678" value={guestPhoneNumber} onChange={(e) => setGuestPhoneNumber(e.target.value)} required className="pl-10" />
+                </div>
+            </div>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isProcessingPayment}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                onClick={handleConfirmAndPay}
-                disabled={isProcessingPayment}
-                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={handleBookingRequest}
+                disabled={!guestPhoneNumber}
               >
-                {isProcessingPayment ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  "Proceed to Telebirr (Simulated)"
-                )}
+                Send Request
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      )}
     </>
   );
 }
-

@@ -16,6 +16,7 @@ export interface RoomType {
   beds: number;
   maxGuests: number;
   image: string; // Image URL from API or placeholder
+  quantity: number; // Number of rooms of this type available in total
 }
 
 export interface Hotel {
@@ -50,6 +51,7 @@ export interface Booking {
   totalPrice: number;
   bookedByGuestName: string;
   bookedByGuestEmail: string;
+  guestPhoneNumber: string;
   bookingDate: string; 
   status: 'pending' | 'confirmed' | 'cancelled'; 
 }
@@ -96,4 +98,3 @@ export function getHotelById(id: string): Hotel | undefined {
     return undefined;
   }
 }
-

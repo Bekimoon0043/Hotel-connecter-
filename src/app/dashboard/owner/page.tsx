@@ -7,7 +7,7 @@ import type { Booking, Hotel, CurrentUser } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ShieldAlert, Home, ListChecks, DollarSign, CalendarDays, Users, Check, X, Phone } from 'lucide-react';
+import { ShieldAlert, Home, ListChecks, DollarSign, CalendarDays, Users, Check, X, Phone, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -189,6 +189,51 @@ export default function OwnerDashboardPage() {
                 </CardContent>
             </Card>
         </section>
+
+        <Card className="shadow-xl mb-10">
+            <CardHeader>
+                <CardTitle className="text-2xl">My Properties</CardTitle>
+                <CardDescription>View and manage your listed properties.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {hotels.length > 0 ? (
+                <div className="overflow-x-auto">
+                    <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead>Hotel Name</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Total Rooms</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {hotels.map((hotel) => (
+                        <TableRow key={hotel.id}>
+                            <TableCell className="font-medium">{hotel.name}</TableCell>
+                            <TableCell>{hotel.location.city}, {hotel.location.country}</TableCell>
+                            <TableCell>{hotel.roomTypes.reduce((acc, room) => acc + room.quantity, 0)}</TableCell>
+                            <TableCell className="text-right">
+                                <Button size="sm" variant="outline" onClick={() => router.push(`/edit-hotel/${hotel.id}`)}>
+                                    <Pencil size={16} className="mr-2" /> Edit
+                                </Button>
+                            </TableCell>
+                        </TableRow>
+                        ))}
+                    </TableBody>
+                    </Table>
+                </div>
+                ) : (
+                <div className="text-center py-10">
+                    <Home size={48} className="mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">You haven't listed any properties yet.</p>
+                     <Button variant="link" onClick={() => router.push('/register-hotel')}>
+                        List your first property now
+                    </Button>
+                </div>
+                )}
+            </CardContent>
+        </Card>
         
         <Card className="shadow-xl">
           <CardHeader>
@@ -269,3 +314,5 @@ export default function OwnerDashboardPage() {
     </div>
   );
 }
+
+    

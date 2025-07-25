@@ -3,47 +3,24 @@
 
 import { useState, useEffect } from 'react';
 import type { Hotel } from '@/lib/types';
+import { getAllHotels } from '@/lib/types';
 import HotelCard from '@/components/hotel-card';
 import { Skeleton } from '@/components/ui/skeleton';
 
-interface PopularHotelsSectionProps {
-  initialHotels: Hotel[]; // These are the mock hotels from the server
-}
-
-export default function PopularHotelsSection({ initialHotels }: PopularHotelsSectionProps) {
+export default function PopularHotelsSection() {
   const [displayedHotels, setDisplayedHotels] = useState<Hotel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsLoading(true);
-    let localHotels: Hotel[] = [];
-    try {
-      const storedHotelsString = localStorage.getItem('registeredHotels');
-      if (storedHotelsString) {
-        localHotels = JSON.parse(storedHotelsString);
-      }
-    } catch (error) {
-      console.error("Error reading registered hotels from localStorage:", error);
-      // Optionally, show a toast or error message
-    }
-
-    // Combine and deduplicate, local hotels first
-    const combinedHotelsMap = new Map<string, Hotel>();
+    const allHotels = getAllHotels();
     
-    // Add local hotels to the map first to prioritize them
-    localHotels.forEach(hotel => combinedHotelsMap.set(hotel.id, hotel));
-    
-    // Add initial (mock) hotels only if their ID isn't already in the map
-    initialHotels.forEach(hotel => {
-      if (!combinedHotelsMap.has(hotel.id)) {
-        combinedHotelsMap.set(hotel.id, hotel);
-      }
-    });
+    // Sort by rating to get "popular" hotels
+    const sortedHotels = allHotels.sort((a, b) => b.rating - a.rating);
 
-    const allCombinedHotels = Array.from(combinedHotelsMap.values());
-    setDisplayedHotels(allCombinedHotels.slice(0, 6));
+    setDisplayedHotels(sortedHotels.slice(0, 6)); // Show top 6
     setIsLoading(false);
-  }, [initialHotels]);
+  }, []);
 
   if (isLoading && displayedHotels.length === 0) {
     return (

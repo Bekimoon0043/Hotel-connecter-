@@ -1,13 +1,12 @@
 
+"use client";
+
+import { useState, useEffect } from 'react';
 import HotelSearchForm from '@/components/hotel-search-form';
-import { getAllHotels } from '@/lib/types';
-import Image from 'next/image';
 import PopularHotelsSection from '@/components/popular-hotels-section';
+import Image from 'next/image';
 
-export default async function ExplorePage() {
-  // Fetch all mock hotels from the API/mock data source
-  const allMockHotels = await getAllHotels(); 
-
+export default function ExplorePage() {
   return (
     <>
       {/* Hero Section */}
@@ -38,7 +37,7 @@ export default async function ExplorePage() {
       </section>
 
       {/* Popular Hotels Section - Now uses the client component */}
-      <PopularHotelsSection initialHotels={allMockHotels} />
+      <PopularHotelsSection />
     </>
   );
 }

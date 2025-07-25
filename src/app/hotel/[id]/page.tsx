@@ -4,7 +4,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
 import { notFound, useParams } from 'next/navigation';
-import { getHotelById as getMockHotelById, type Hotel, type RoomType } from '@/lib/types';
+import { getHotelById, type Hotel } from '@/lib/types';
 import StarRating from '@/components/star-rating';
 import BookingSection from '@/components/booking-section';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,7 +24,7 @@ function AmenityIcon({ amenity, className = "h-5 w-5 text-primary" }: AmenityIco
     case 'parking': return <ParkingCircle className={className} />;
     case 'air conditioning': return <Wind className={className} />;
     case 'restaurant': return <Utensils className={className} />;
-    case 'gym': return <Sparkles className={className} />; // Using Sparkles as a generic icon
+    case 'gym': return <Sparkles className={className} />; 
     case 'pet friendly': return <Sparkles className={className} />; 
     case 'spa': return <Sparkles className={className} />; 
     case 'beach access': return <Sparkles className={className} />; 
@@ -50,32 +50,8 @@ function HotelDetailsContent() {
 
   useEffect(() => {
     if (!id) return;
-
-    let foundHotel: Hotel | undefined = undefined;
-
-    try {
-      const storedHotelsString = localStorage.getItem('registeredHotels');
-      if (storedHotelsString) {
-        const registeredHotels: Hotel[] = JSON.parse(storedHotelsString);
-        foundHotel = registeredHotels.find(h => h.id === id);
-      }
-    } catch (error) {
-      console.error("Error reading registered hotels from localStorage:", error);
-    }
-
-    if (!foundHotel) {
-      getMockHotelById(id).then(mockHotel => {
-        if (mockHotel) {
-          setHotel(mockHotel);
-        } else {
-          setHotel(null); 
-        }
-      }).catch(() => {
-        setHotel(null); 
-      });
-    } else {
-      setHotel(foundHotel);
-    }
+    const foundHotel = getHotelById(id);
+    setHotel(foundHotel || null);
   }, [id]);
 
   if (hotel === undefined) { 

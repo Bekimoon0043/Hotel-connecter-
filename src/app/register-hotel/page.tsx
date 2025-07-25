@@ -22,6 +22,17 @@ interface RoomTypeFormData extends Partial<Omit<RoomType, 'id' | 'image'>> {
   quantity?: number;
 }
 
+
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
+
 export default function RegisterHotelPage() {
   const { toast } = useToast();
   const router = useRouter();
@@ -140,18 +151,21 @@ export default function RegisterHotelPage() {
       toast({ title: "Authentication Error", description: "You are not authorized to perform this action.", variant: "destructive" });
       return;
     }
+    
+    // Process hotel images
+    const hotelImagePromises = [hotelImageFile1, hotelImageFile2, hotelImageFile3]
+        .filter(file => file !== null)
+        .map(file => fileToDataUrl(file!));
+
+    const hotelImages = await Promise.all(hotelImagePromises);
+    while (hotelImages.length < 3) {
+      hotelImages.push("https://placehold.co/600x400.png"); // Ensure 3 images
+    }
 
     let hotelMainPrice = parseFloat(pricePerNight);
     if (isNaN(hotelMainPrice) || hotelMainPrice <=0) {
         hotelMainPrice = 0; 
     }
-
-    // FIX: Use placeholders instead of converting to Data URLs to avoid quota issues.
-    const hotelImages: string[] = [
-        "https://placehold.co/800x600.png",
-        "https://placehold.co/600x400.png",
-        "https://placehold.co/600x400.png"
-    ];
 
     const finalRoomTypes: RoomType[] = [];
     let minRoomPrice = Infinity;
@@ -162,8 +176,10 @@ export default function RegisterHotelPage() {
         continue;
       }
       
-      // FIX: Use a placeholder for the room image.
-      const roomImage = "https://placehold.co/600x400.png";
+      let roomImage = "https://placehold.co/600x400.png";
+      if (roomData.imageFile) {
+        roomImage = await fileToDataUrl(roomData.imageFile);
+      }
 
       finalRoomTypes.push({
         id: roomData.id || `rt-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,

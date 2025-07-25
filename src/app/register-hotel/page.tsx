@@ -132,20 +132,6 @@ export default function RegisterHotelPage() {
     }
   };
 
-  const convertFileToDataURL = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          resolve(reader.result);
-        } else {
-          reject(new Error('Failed to read file as Data URL.'));
-        }
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,16 +146,12 @@ export default function RegisterHotelPage() {
         hotelMainPrice = 0; 
     }
 
-    const hotelImages: string[] = [];
-    try {
-      hotelImages.push(hotelImageFile1 ? await convertFileToDataURL(hotelImageFile1) : "https://placehold.co/800x600.png");
-      hotelImages.push(hotelImageFile2 ? await convertFileToDataURL(hotelImageFile2) : "https://placehold.co/600x400.png");
-      hotelImages.push(hotelImageFile3 ? await convertFileToDataURL(hotelImageFile3) : "https://placehold.co/600x400.png");
-    } catch (error) {
-      console.error("Error converting hotel image(s) to Data URL:", error);
-      toast({ title: "Image Upload Error", description: "Could not process one or more hotel images. Using default images.", variant: "warning" });
-      while(hotelImages.length < 3) hotelImages.push(hotelImages.length === 0 ? "https://placehold.co/800x600.png" : "https://placehold.co/600x400.png");
-    }
+    // FIX: Use placeholders instead of converting to Data URLs to avoid quota issues.
+    const hotelImages: string[] = [
+        "https://placehold.co/800x600.png",
+        "https://placehold.co/600x400.png",
+        "https://placehold.co/600x400.png"
+    ];
 
     const finalRoomTypes: RoomType[] = [];
     let minRoomPrice = Infinity;
@@ -179,15 +161,10 @@ export default function RegisterHotelPage() {
         toast({ title: "Incomplete Room Data", description: `Room "${roomData.name || 'Unnamed'}" is missing required fields (name, valid price, valid quantity). It will not be saved.`, variant: "warning" });
         continue;
       }
-      let roomImage = "https://placehold.co/600x400.png";
-      if (roomData.imageFile) {
-        try {
-          roomImage = await convertFileToDataURL(roomData.imageFile);
-        } catch (error) {
-          console.error("Error converting room image to Data URL:", error);
-          toast({ title: "Room Image Error", description: `Could not process image for room "${roomData.name}". Using default.`, variant: "warning" });
-        }
-      }
+      
+      // FIX: Use a placeholder for the room image.
+      const roomImage = "https://placehold.co/600x400.png";
+
       finalRoomTypes.push({
         id: roomData.id || `rt-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
         name: roomData.name,
@@ -270,9 +247,13 @@ export default function RegisterHotelPage() {
       const imageInput3 = document.getElementById('hotelImage3') as HTMLInputElement | null;
       if(imageInput3) imageInput3.value = '';
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving to localStorage:", error);
-      toast({ title: "Registration Error", description: "Could not save your hotel registration. Please try again.", variant: "destructive" });
+      let errorMessage = "Could not save your hotel registration. Please try again.";
+      if (error.name === 'QuotaExceededError') {
+          errorMessage = "Could not save. Storage quota exceeded. Please try clearing some space or contact support.";
+      }
+      toast({ title: "Registration Error", description: errorMessage, variant: "destructive" });
     }
   };
   
@@ -481,3 +462,5 @@ export default function RegisterHotelPage() {
     </div>
   );
 }
+
+    
